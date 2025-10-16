@@ -499,12 +499,28 @@ function App() {
               <Button
                 onClick={() => {
                   // Apply filters to the processedImage
-                  if (processedImage && filterCanvasRef.current) {
-                    setIsProcessing(true);
-                    
-                    const tempImg = new Image();
-                    tempImg.onload = () => {
+                  if (!processedImage) {
+                    showToast('Error: No image to apply filters to');
+                    return;
+                  }
+                  
+                  if (!filterCanvasRef.current) {
+                    showToast('Error: Canvas not initialized');
+                    return;
+                  }
+                  
+                  setIsProcessing(true);
+                  
+                  const tempImg = new Image();
+                  tempImg.onload = () => {
+                    try {
                       const canvas = filterCanvasRef.current;
+                      if (!canvas) {
+                        setIsProcessing(false);
+                        showToast('Error: Canvas lost during processing');
+                        return;
+                      }
+                      
                       const ctx = canvas.getContext("2d");
 
                       // Set canvas dimensions to match the loaded image
@@ -528,13 +544,17 @@ function App() {
                       
                       setIsProcessing(false);
                       showToast('Filters applied successfully');
-                    };
-                    tempImg.onerror = () => {
+                    } catch (error) {
                       setIsProcessing(false);
-                      showToast('Error applying filters');
-                    };
-                    tempImg.src = processedImage;
-                  }
+                      showToast('Error: Failed to apply filters');
+                      console.error('Filter application error:', error);
+                    }
+                  };
+                  tempImg.onerror = () => {
+                    setIsProcessing(false);
+                    showToast('Error: Failed to load image');
+                  };
+                  tempImg.src = processedImage;
                 }}
                 className="w-full"
               >
