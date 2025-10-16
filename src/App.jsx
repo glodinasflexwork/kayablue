@@ -501,25 +501,19 @@ function App() {
                   // Apply filters to the processedImage
                   if (processedImage && filterCanvasRef.current) {
                     setIsProcessing(true);
-                    const imgElement = imgRef.current;
-                    if (!imgElement) {
-                      setIsProcessing(false);
-                      showToast('Error: Image not loaded for filters.');
-                      return;
-                    }
-
-                    const canvas = filterCanvasRef.current;
-                    const ctx = canvas.getContext("2d");
-
-                    // Ensure canvas matches image dimensions for filter application
-                    canvas.width = imgElement.naturalWidth;
-                    canvas.height = imgElement.naturalHeight;
                     
-                    // Draw the current processed image onto the canvas
                     const tempImg = new Image();
                     tempImg.onload = () => {
+                      const canvas = filterCanvasRef.current;
+                      const ctx = canvas.getContext("2d");
+
+                      // Set canvas dimensions to match the loaded image
+                      canvas.width = tempImg.width;
+                      canvas.height = tempImg.height;
+                      
+                      // Apply CSS filters to canvas context
                       ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) grayscale(${grayscale}%) sepia(${sepia}%) blur(${blur}px)`;
-                      ctx.drawImage(tempImg, 0, 0, canvas.width, canvas.height);
+                      ctx.drawImage(tempImg, 0, 0);
                       ctx.filter = 'none'; // Reset filter context
                       
                       setProcessedImage(canvas.toDataURL("image/png"));
@@ -534,6 +528,10 @@ function App() {
                       
                       setIsProcessing(false);
                       showToast('Filters applied successfully');
+                    };
+                    tempImg.onerror = () => {
+                      setIsProcessing(false);
+                      showToast('Error applying filters');
                     };
                     tempImg.src = processedImage;
                   }
