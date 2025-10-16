@@ -1,15 +1,26 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button.jsx'
 import { Card } from '@/components/ui/card.jsx'
 import { Slider } from '@/components/ui/slider.jsx'
-import { Upload, Download, RotateCw, RotateCcw, RefreshCw } from 'lucide-react'
+import { Upload, Download, RotateCw, RotateCcw, RefreshCw, Crop } from 'lucide-react'
+
+import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop'
+import 'react-image-crop/dist/ReactCrop.css'
+
 import './App.css'
 
 function App() {
   const [image, setImage] = useState(null)
   const [rotation, setRotation] = useState(0)
   const fileInputRef = useRef(null)
-  const canvasRef = useRef(null)
+  const imgRef = useRef(null)
+  const previewCanvasRef = useRef(null)
+
+  const [crop, setCrop] = useState()
+  const [completedCrop, setCompletedCrop] = useState(null)
+  const [scale, setScale] = useState(1)
+  const [rotate, setRotate] = useState(0)
+  const [aspect, setAspect] = useState(16 / 9)
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0]
@@ -18,9 +29,26 @@ function App() {
       reader.onload = (event) => {
         setImage(event.target.result)
         setRotation(0)
+        setCompletedCrop(null)
+        setCrop(undefined) // Clear crop when new image is uploaded
       }
       reader.readAsDataURL(file)
     }
+  }
+
+  const onImageLoad = (e) => {
+    imgRef.current = e.currentTarget
+    const { width, height } = e.currentTarget
+    setCrop(centerCrop(
+      makeAspectCrop(
+        { unit: '%', width: 90 },
+        aspect,
+        width,
+        height,
+      ),
+      width,
+      height,
+    ))
   }
 
   const handleRotateLeft = () => {
@@ -33,6 +61,50 @@ function App() {
 
   const handleReset = () => {
     setRotation(0)
+    setCompletedCrop(null)
+    setCrop(undefined)
+  }
+
+  const handleCrop = async () => {
+    if (!completedCrop || !imgRef.current || !previewCanvasRef.current) {
+      return
+    }
+
+    const image = imgRef.current
+    const canvas = previewCanvasRef.current
+    const ctx = canvas.getContext('2d')
+
+    const scaleX = image.naturalWidth / image.width
+    const scaleY = image.naturalHeight / image.height
+    const pixelRatio = window.devicePixelRatio
+
+    canvas.width = Math.floor(completedCrop.width * scaleX * pixelRatio)
+    canvas.height = Math.floor(completedCrop.height * scaleY * pixelRatio)
+
+    ctx.scale(pixelRatio, pixelRatio)
+    ctx.imageSmoothingQuality = 'high'
+
+    const cropX = completedCrop.x * scaleX
+    const cropY = completedCrop.y * scaleY
+
+    ctx.drawImage(
+      image,
+      cropX,
+      cropY,
+      completedCrop.width * scaleX,
+      completedCrop.height * scaleY,
+      0,
+      0,
+      completedCrop.width * scaleX,
+      completedCrop.height * scaleY,
+    )
+
+    // Convert the cropped canvas to a data URL and set it as the new image
+    const croppedImage = canvas.toDataURL('image/png')
+    setImage(croppedImage)
+    setRotation(0) // Reset rotation after cropping
+    setCompletedCrop(null) // Clear completed crop
+    setCrop(undefined) // Clear crop selection
   }
 
   const handleDownload = () => {
@@ -58,7 +130,7 @@ function App() {
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `rotated-image-${rotation}deg.png`
+        a.download = `kayablue-image-${Date.now()}.png`
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
@@ -77,7 +149,7 @@ function App() {
             KAYABLUE
           </h1>
           <p className="text-gray-600 dark:text-gray-400 text-lg">
-            Upload, Rotate & Download Your Images
+            Upload, Rotate & Crop Your Images
           </p>
         </div>
 
@@ -113,18 +185,27 @@ function App() {
           ) : (
             <div className="space-y-6">
               <div className="relative bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden flex items-center justify-center min-h-[400px]">
-                <img
-                  src={image}
-                  alt="Uploaded"
-                  style={{
-                    transform: `rotate(${rotation}deg)`,
-                    transition: 'transform 0.3s ease-in-out',
-                    maxWidth: '100%',
-                    maxHeight: '500px',
-                    objectFit: 'contain'
-                  }}
-                  className="shadow-lg"
-                />
+                <ReactCrop
+                  crop={crop}
+                  onChange={(_, percentCrop) => setCrop(percentCrop)}
+                  onComplete={(c) => setCompletedCrop(c)}
+                  aspect={aspect}
+                >
+                  <img
+                    ref={imgRef}
+                    src={image}
+                    alt="Uploaded"
+                    onLoad={onImageLoad}
+                    style={{
+                      transform: `rotate(${rotation}deg)`,
+                      transition: 'transform 0.3s ease-in-out',
+                      maxWidth: '100%',
+                      maxHeight: '500px',
+                      objectFit: 'contain'
+                    }}
+                    className="shadow-lg"
+                  />
+                </ReactCrop>
               </div>
 
               <div className="space-y-4">
@@ -160,6 +241,15 @@ function App() {
                     Rotate Right 90°
                   </Button>
                   <Button
+                    onClick={handleCrop}
+                    variant="outline"
+                    className="flex-1 min-w-[140px]"
+                    disabled={!completedCrop?.width || !completedCrop?.height}
+                  >
+                    <Crop className="w-4 h-4 mr-2" />
+                    Apply Crop
+                  </Button>
+                  <Button
                     onClick={handleReset}
                     variant="outline"
                     className="flex-1 min-w-[140px]"
@@ -174,6 +264,8 @@ function App() {
                     onClick={() => {
                       setImage(null)
                       setRotation(0)
+                      setCompletedCrop(null)
+                      setCrop(undefined)
                       if (fileInputRef.current) fileInputRef.current.value = ''
                     }}
                     variant="outline"
@@ -187,7 +279,7 @@ function App() {
                     className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    Download Rotated Image
+                    Download Image
                   </Button>
                 </div>
               </div>
@@ -199,6 +291,12 @@ function App() {
           <p>All processing happens in your browser. Your images are never uploaded to any server.</p>
         </div>
       </div>
+      <canvas
+        ref={previewCanvasRef}
+        style={{
+          display: 'none',
+        }}
+      />
     </div>
   )
 }
