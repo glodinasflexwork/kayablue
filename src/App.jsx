@@ -835,19 +835,19 @@ function App() {
                       const canvas = filterCanvasRef.current;
                       if (!canvas) {
                         setIsProcessing(false);
-                        showToast('Error: Canvas lost during processing');
+                        showToast("Error: Canvas lost during processing");
                         return;
                       }
                       
                       const ctx = canvas.getContext("2d");
 
-                      // Set canvas dimensions to match the loaded image
-                      canvas.width = tempImg.width;
-                      canvas.height = tempImg.height;
+                      // Set canvas dimensions to match the loaded image's natural dimensions
+                      canvas.width = tempImg.naturalWidth;
+                      canvas.height = tempImg.naturalHeight;
                       
                       // Apply CSS filters to canvas context
                       ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) grayscale(${grayscale}%) sepia(${sepia}%) blur(${blur}px)`;
-                      ctx.drawImage(tempImg, 0, 0);
+                      ctx.drawImage(tempImg, 0, 0, tempImg.naturalWidth, tempImg.naturalHeight);
                       ctx.filter = 'none'; // Reset filter context
                       
                       setProcessedImage(canvas.toDataURL("image/png"));
@@ -870,8 +870,9 @@ function App() {
                   };
                   tempImg.onerror = () => {
                     setIsProcessing(false);
-                    showToast('Error: Failed to load image');
+                    showToast('Error: Failed to load image from processedImage source');
                   };
+                  // Ensure tempImg.src is set after onload to guarantee event fires
                   tempImg.src = processedImage;
                 }}
                 className="w-full"
