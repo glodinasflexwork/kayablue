@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button.jsx'
 import { Card } from '@/components/ui/card.jsx'
@@ -260,13 +261,12 @@ function App() {
   }
 
   useEffect(() => {
-    if (!image || !imgRef.current || !previewCanvasRef.current) return
+    if (!image || !imgRef.current) return
 
-    const canvas = previewCanvasRef.current
+    const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
     const img = imgRef.current
 
-    // Temporarily set canvas to image dimensions for filter application
     canvas.width = img.naturalWidth
     canvas.height = img.naturalHeight
 
@@ -274,9 +274,8 @@ function App() {
     applyFilters(ctx)
     ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight)
 
-    // Update the displayed image with filters applied
-    // Note: This re-renders the image with filters, but for download, filters are applied again on the final canvas
-    setImage(canvas.toDataURL('image/png'))
+    // This effect should not re-set the image state, as it creates a loop.
+    // The filters are applied on download.
   }, [brightness, contrast, saturation, grayscale, sepia, blur])
 
   return (
@@ -299,282 +298,144 @@ function App() {
                 className="w-full max-w-md border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-xl p-12 cursor-pointer hover:border-blue-500 dark:hover:border-blue-500 transition-all hover:bg-blue-50/50 dark:hover:bg-blue-900/20 group"
               >
                 <div className="flex flex-col items-center gap-4">
-                  <div className="w-20 h-20 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Upload className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+                  <div className="bg-blue-100 dark:bg-blue-900/30 p-4 rounded-full group-hover:scale-110 transition-transform">
+                    <Upload className="w-8 h-8 text-blue-500 dark:text-blue-400" />
                   </div>
-                  <div className="text-center">
-                    <p className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                      Click to upload an image
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      PNG, JPG, GIF up to 10MB
-                    </p>
-                  </div>
+                  <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">Click to upload an image</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">PNG, JPG, GIF up to 10MB</p>
                 </div>
               </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
+              <input 
+                type="file" 
+                accept="image/*" 
+                ref={fileInputRef} 
+                onChange={handleImageUpload} 
+                className="hidden" 
               />
             </div>
           ) : (
-            <div className="space-y-6">
-              <div className="relative bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden flex items-center justify-center min-h-[400px]">
-                <ReactCrop
-                  crop={crop}
-                  onChange={(_, percentCrop) => setCrop(percentCrop)}
-                  onComplete={(c) => setCompletedCrop(c)}
-                  aspect={aspect}
-                >
-                  <img
-                    ref={imgRef}
-                    src={image}
-                    alt="Uploaded"
-                    onLoad={onImageLoad}
-                    style={{
-                      transform: `rotate(${rotation}deg)`,
-                      transition: 'transform 0.3s ease-in-out',
-                      maxWidth: '100%',
-                      maxHeight: '500px',
-                      objectFit: 'contain',
-                      filter: `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) grayscale(${grayscale}%) sepia(${sepia}%) blur(${blur}px)`
-                    }}
-                    className="shadow-lg"
-                  />
-                </ReactCrop>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="flex flex-col items-center justify-center">
+                <div className="w-full aspect-square bg-gray-100 dark:bg-gray-900/50 rounded-lg overflow-hidden flex items-center justify-center relative">
+                  <ReactCrop
+                    crop={crop}
+                    onChange={(_, percentCrop) => setCrop(percentCrop)}
+                    onComplete={(c) => setCompletedCrop(c)}
+                    aspect={aspect}
+                  >
+                    <img
+                      ref={imgRef}
+                      src={image}
+                      alt="Uploaded preview" 
+                      onLoad={onImageLoad}
+                      style={{
+                        transform: `rotate(${rotation}deg)`,
+                        filter: `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) grayscale(${grayscale}%) sepia(${sepia}%) blur(${blur}px)`
+                      }}
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </ReactCrop>
+                </div>
+                <canvas ref={previewCanvasRef} className="hidden" />
               </div>
 
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 min-w-[100px]">
-                    Rotation: {rotation}°
-                  </span>
-                  <Slider
-                    value={[rotation]}
-                    onValueChange={(value) => setRotation(value[0])}
-                    min={-180}
-                    max={180}
-                    step={1}
-                    className="flex-1"
-                  />
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    onClick={handleRotateLeft}
-                    variant="outline"
-                    className="flex-1 min-w-[140px]"
-                  >
-                    <RotateCcw className="w-4 h-4 mr-2" />
-                    Rotate Left 90°
-                  </Button>
-                  <Button
-                    onClick={handleRotateRight}
-                    variant="outline"
-                    className="flex-1 min-w-[140px]"
-                  >
-                    <RotateCw className="w-4 h-4 mr-2" />
-                    Rotate Right 90°
-                  </Button>
-                  <Button
-                    onClick={handleCrop}
-                    variant="outline"
-                    className="flex-1 min-w-[140px]"
-                    disabled={!completedCrop?.width || !completedCrop?.height}
-                  >
-                    <Crop className="w-4 h-4 mr-2" />
-                    Apply Crop
-                  </Button>
-                  <Button
-                    onClick={handleReset}
-                    variant="outline"
-                    className="flex-1 min-w-[140px]"
-                  >
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Reset
-                  </Button>
-                </div>
-
-                <div className="flex flex-wrap gap-3 mt-4">
-                  <div className="flex items-center gap-2 flex-1 min-w-[140px]">
-                    <Input
-                      type="number"
-                      placeholder="Width"
-                      value={newWidth === 0 ? '' : newWidth}
-                      onChange={handleWidthChange}
-                      className="w-full"
+              <div className="flex flex-col gap-6">
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Rotate</h3>
+                  <div className="flex items-center gap-2">
+                    <Button onClick={handleRotateLeft} variant="outline" size="icon"><RotateCcw className="w-4 h-4" /></Button>
+                    <Slider 
+                      value={[rotation]} 
+                      onValueChange={(value) => setRotation(value[0])} 
+                      max={360} 
+                      step={1} 
                     />
-                    <span className="text-gray-700 dark:text-gray-300">x</span>
-                    <Input
-                      type="number"
-                      placeholder="Height"
-                      value={newHeight === 0 ? '' : newHeight}
-                      onChange={handleHeightChange}
-                      className="w-full"
-                    />
+                    <Button onClick={handleRotateRight} variant="outline" size="icon"><RotateCw className="w-4 h-4" /></Button>
                   </div>
-                  <Button
-                    onClick={handleResize}
-                    variant="outline"
-                    className="flex-1 min-w-[140px]"
-                    disabled={!newWidth || !newHeight || (newWidth === originalDimensions.width && newHeight === originalDimensions.height)}
-                  >
-                    <Maximize className="w-4 h-4 mr-2" />
-                    Apply Resize
-                  </Button>
                 </div>
 
-                <div className="space-y-4 mt-4">
-                  <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                    <Palette className="w-5 h-5" /> Image Filters
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Crop</h3>
+                  <div className="flex items-center gap-2">
+                    <Button onClick={handleCrop} className="w-full">Apply Crop</Button>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Resize</h3>
+                  <div className="flex items-center gap-2">
+                    <Input type="number" value={newWidth} onChange={handleWidthChange} placeholder="Width" />
+                    <Input type="number" value={newHeight} onChange={handleHeightChange} placeholder="Height" />
+                    <Button onClick={handleResize}>Apply</Button>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><Palette className="w-5 h-5"/>Filters</h3>
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Brightness: {brightness}%</label>
-                      <Slider
-                        value={[brightness]}
-                        onValueChange={(value) => setBrightness(value[0])}
-                        min={0}
-                        max={200}
-                        step={1}
-                      />
+                      <label className="text-sm">Brightness</label>
+                      <Slider value={[brightness]} onValueChange={(v) => setBrightness(v[0])} min={0} max={200} />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Contrast: {contrast}%</label>
-                      <Slider
-                        value={[contrast]}
-                        onValueChange={(value) => setContrast(value[0])}
-                        min={0}
-                        max={200}
-                        step={1}
-                      />
+                      <label className="text-sm">Contrast</label>
+                      <Slider value={[contrast]} onValueChange={(v) => setContrast(v[0])} min={0} max={200} />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Saturation: {saturation}%</label>
-                      <Slider
-                        value={[saturation]}
-                        onValueChange={(value) => setSaturation(value[0])}
-                        min={0}
-                        max={200}
-                        step={1}
-                      />
+                      <label className="text-sm">Saturation</label>
+                      <Slider value={[saturation]} onValueChange={(v) => setSaturation(v[0])} min={0} max={200} />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Grayscale: {grayscale}%</label>
-                      <Slider
-                        value={[grayscale]}
-                        onValueChange={(value) => setGrayscale(value[0])}
-                        min={0}
-                        max={100}
-                        step={1}
-                      />
+                      <label className="text-sm">Grayscale</label>
+                      <Slider value={[grayscale]} onValueChange={(v) => setGrayscale(v[0])} min={0} max={100} />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Sepia: {sepia}%</label>
-                      <Slider
-                        value={[sepia]}
-                        onValueChange={(value) => setSepia(value[0])}
-                        min={0}
-                        max={100}
-                        step={1}
-                      />
+                      <label className="text-sm">Sepia</label>
+                      <Slider value={[sepia]} onValueChange={(v) => setSepia(v[0])} min={0} max={100} />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Blur: {blur}px</label>
-                      <Slider
-                        value={[blur]}
-                        onValueChange={(value) => setBlur(value[0])}
-                        min={0}
-                        max={10}
-                        step={0.1}
-                      />
+                      <label className="text-sm">Blur</label>
+                      <Slider value={[blur]} onValueChange={(v) => setBlur(v[0])} min={0} max={10} step={0.1} />
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-4 mt-4">
-                  <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                    <Compress className="w-5 h-5" /> Compression & Format
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><Compress className="w-5 h-5"/>Compression & Format</h3>
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Quality: {compressionQuality}%</label>
-                      <Slider
-                        value={[compressionQuality]}
-                        onValueChange={(value) => setCompressionQuality(value[0])}
-                        min={10}
-                        max={100}
-                        step={1}
-                      />
+                      <label className="text-sm">Quality</label>
+                      <Slider value={[compressionQuality]} onValueChange={(v) => setCompressionQuality(v[0])} min={0} max={100} />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Output Format</label>
+                      <label className="text-sm">Format</label>
                       <Select value={outputFormat} onValueChange={setOutputFormat}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select format" />
+                        <SelectTrigger>
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="image/png">PNG</SelectItem>
                           <SelectItem value="image/jpeg">JPEG</SelectItem>
-                          <SelectItem value="image/webp">WebP</SelectItem>
+                          <SelectItem value="image/webp">WEBP</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex gap-3 pt-4">
-                  <Button
-                    onClick={() => {
-                      setImage(null)
-                      setRotation(0)
-                      setCompletedCrop(null)
-                      setCrop(undefined)
-                      setOriginalDimensions({ width: 0, height: 0 })
-                      setNewWidth(0)
-                      setNewHeight(0)
-                      setBrightness(100)
-                      setContrast(100)
-                      setSaturation(100)
-                      setGrayscale(0)
-                      setSepia(0)
-                      setBlur(0)
-                      setCompressionQuality(90)
-                      setOutputFormat('image/png')
-                      if (fileInputRef.current) fileInputRef.current.value = ''
-                    }}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    Upload New Image
-                  </Button>
-                  <Button
-                    onClick={handleDownload}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Download Image
-                  </Button>
+                <div className="flex items-center gap-4 mt-4">
+                  <Button onClick={handleDownload} className="w-full"><Download className="w-4 h-4 mr-2" />Download Image</Button>
+                  <Button onClick={handleReset} variant="secondary" className="w-full"><RefreshCw className="w-4 h-4 mr-2" />Reset</Button>
                 </div>
               </div>
             </div>
           )}
         </Card>
 
-        <div className="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
-          <p>All processing happens in your browser. Your images are never uploaded to any server.</p>
-        </div>
+        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-8">
+          All processing happens in your browser. Your images are never uploaded to any server.
+        </p>
       </div>
-      <canvas
-        ref={previewCanvasRef}
-        style={{
-          display: 'none',
-        }}
-      />
     </div>
   )
 }
