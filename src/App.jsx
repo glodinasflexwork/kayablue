@@ -35,6 +35,9 @@ function App() {
   const [sepia, setSepia] = useState(0)
   const [blur, setBlur] = useState(0)
 
+  // Compression state
+  const [compressionQuality, setCompressionQuality] = useState(90) // 0-100
+
   const handleImageUpload = (e) => {
     const file = e.target.files[0]
     if (file && file.type.startsWith('image/')) {
@@ -51,6 +54,8 @@ function App() {
         setGrayscale(0)
         setSepia(0)
         setBlur(0)
+        // Reset compression
+        setCompressionQuality(90)
 
         const img = new Image()
         img.onload = () => {
@@ -103,6 +108,7 @@ function App() {
     setGrayscale(0)
     setSepia(0)
     setBlur(0)
+    setCompressionQuality(90)
     if (imgRef.current) {
       setNewWidth(imgRef.current.naturalWidth)
       setNewHeight(imgRef.current.naturalHeight)
@@ -234,16 +240,20 @@ function App() {
       applyFiltersToContext(ctx)
       ctx.drawImage(img, -img.width / 2, -img.height / 2)
       
+      // Use compressionQuality for JPEG/WebP
+      const mimeType = 'image/jpeg' // Default to JPEG for compression
+      const downloadFileName = `kayablue-image-${Date.now()}.jpeg`
+
       canvas.toBlob((blob) => {
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `kayablue-image-${Date.now()}.png`
+        a.download = downloadFileName
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
         URL.revokeObjectURL(url)
-      }, 'image/png')
+      }, mimeType, compressionQuality / 100)
     }
     
     img.src = image
@@ -260,7 +270,7 @@ function App() {
             KAYABLUE
           </h1>
           <p className="text-gray-600 dark:text-gray-400 text-lg">
-            Upload, Rotate, Crop, Resize & Filter Your Images
+            Upload, Rotate, Crop, Resize, Filter & Compress Your Images
           </p>
         </div>
 
@@ -371,6 +381,14 @@ function App() {
                       <label className="text-sm">Blur</label>
                       <Slider value={[blur]} onValueChange={(v) => setBlur(v[0])} min={0} max={10} step={0.1} />
                     </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><Compress className="w-5 h-5"/>Compression</h3>
+                  <div>
+                    <label className="text-sm">Quality (JPEG/WebP)</label>
+                    <Slider value={[compressionQuality]} onValueChange={(v) => setCompressionQuality(v[0])} min={0} max={100} />
                   </div>
                 </div>
 
