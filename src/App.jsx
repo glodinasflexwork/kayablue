@@ -486,14 +486,25 @@ function App() {
                       const ctx = canvas.getContext("2d");
 
                       // Ensure canvas matches image dimensions for filter application
-                      canvas.width = img.naturalWidth;
-                      canvas.height = img.naturalHeight;
+                      canvas.width = img.width;
+                      canvas.height = img.height;
                       
                       // Apply CSS filters to canvas
                       ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) grayscale(${grayscale}%) sepia(${sepia}%) blur(${blur}px)`;
-                      ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight);
+                      ctx.drawImage(img, 0, 0, img.width, img.height);
+                      
+                      // Reset the filter context to prevent it from affecting subsequent operations
+                      ctx.filter = 'none';
                       
                       setProcessedImage(canvas.toDataURL("image/png"));
+                      
+                      // Reset filter values after applying
+                      setBrightness(100);
+                      setContrast(100);
+                      setSaturation(100);
+                      setGrayscale(0);
+                      setSepia(0);
+                      setBlur(0);
                     };
                     img.src = processedImage;
                   }
