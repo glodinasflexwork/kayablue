@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button.jsx'
 import { Card } from '@/components/ui/card.jsx'
 import { Upload, Download, RotateCw, Crop, Maximize, Palette, Archive, FileImage, RotateCcw } from 'lucide-react'
 import { Slider } from '@/components/ui/slider.jsx'
+import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop'
+import 'react-image-crop/dist/ReactCrop.css'
 
 import './App.css'
 
@@ -12,8 +14,11 @@ function App() {
   const [processedImage, setProcessedImage] = useState(null)
   const [activeTool, setActiveTool] = useState(null)
   const [rotation, setRotation] = useState(0)
+  const [crop, setCrop] = useState()
+  const [completedCrop, setCompletedCrop] = useState(null)
+  const imgRef = useRef(null)
+  const previewCanvasRef = useRef(null)
   const fileInputRef = useRef(null)
-  const canvasRef = useRef(null)
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0]
@@ -24,6 +29,8 @@ function App() {
         setProcessedImage(event.target.result)
         setActiveTool(null)
         setRotation(0)
+        setCrop(undefined) // Clear crop when new image is uploaded
+        setCompletedCrop(null)
       }
       reader.readAsDataURL(file)
     }
@@ -37,7 +44,6 @@ function App() {
       const canvas = document.createElement('canvas')
       const ctx = canvas.getContext('2d')
 
-      // Calculate new canvas size based on rotation
       const rad = (degrees * Math.PI) / 180
       const sin = Math.abs(Math.sin(rad))
       const cos = Math.abs(Math.cos(rad))
@@ -45,7 +51,6 @@ function App() {
       canvas.width = img.width * cos + img.height * sin
       canvas.height = img.width * sin + img.height * cos
 
-      // Translate to center and rotate
       ctx.translate(canvas.width / 2, canvas.height / 2)
       ctx.rotate(rad)
       ctx.drawImage(img, -img.width / 2, -img.height / 2)
@@ -77,6 +82,8 @@ function App() {
     setProcessedImage(null)
     setActiveTool(null)
     setRotation(0)
+    setCrop(undefined)
+    setCompletedCrop(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -84,9 +91,69 @@ function App() {
 
   const handleToolChange = (toolId) => {
     setActiveTool(toolId)
-    setProcessedImage(image) // Reset to original image
+    setProcessedImage(image) // Reset to original image when changing tool
     setRotation(0) // Reset rotation
+    setCrop(undefined) // Reset crop
+    setCompletedCrop(null)
   }
+
+  // Cropping functions
+  function onImageLoad(e) {
+    imgRef.current = e.currentTarget
+    const { width, height } = e.currentTarget
+    const newCrop = centerCrop(
+      makeAspectCrop(
+        { unit: '%', width: 90 },
+        16 / 9,
+        width,
+        height
+      ),
+      width,
+      height
+    )
+    setCrop(newCrop)
+  }
+
+  useEffect(() => {
+    if (
+      completedCrop?.width &&
+      completedCrop?.height &&
+      imgRef.current &&
+      previewCanvasRef.current
+    ) {
+      // We use canvasRef instead of a hidden canvas for better integration
+      const image = imgRef.current
+      const canvas = previewCanvasRef.current
+      const ctx = canvas.getContext('2d')
+
+      const scaleX = image.naturalWidth / image.width
+      const scaleY = image.naturalHeight / image.height
+
+      const pixelRatio = window.devicePixelRatio
+
+      canvas.width = Math.floor(completedCrop.width * scaleX * pixelRatio)
+      canvas.height = Math.floor(completedCrop.height * scaleY * pixelRatio)
+
+      ctx.scale(pixelRatio, pixelRatio)
+      ctx.imageSmoothingQuality = 'high'
+
+      const cropX = completedCrop.x * scaleX
+      const cropY = completedCrop.y * scaleY
+
+      ctx.drawImage(
+        image,
+        cropX,
+        cropY,
+        completedCrop.width * scaleX,
+        completedCrop.height * scaleY,
+        0,
+        0,
+        completedCrop.width * scaleX,
+        completedCrop.height * scaleY
+      )
+      setProcessedImage(canvas.toDataURL('image/png'))
+    }
+  }, [completedCrop])
 
   const tools = [
     { id: 'rotate', name: 'Rotate', icon: RotateCw, description: 'Rotate your image by any angle' },
@@ -151,6 +218,18 @@ function App() {
           </div>
         )
 
+      case 'crop':
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Drag to select the area you want to crop. Use the handles to adjust.
+            </p>
+            <Button onClick={() => setCompletedCrop(crop)} className="w-full">
+              Apply Crop
+            </Button>
+          </div>
+        )
+
       default:
         return (
           <div className="text-center py-8">
@@ -204,11 +283,33 @@ function App() {
             <div className="space-y-6">
               {/* Image Preview */}
               <div className="flex items-center justify-center bg-gray-100 dark:bg-gray-900/50 rounded-lg overflow-hidden min-h-[300px] md:min-h-[400px]">
-                <img
-                  src={processedImage || image}
-                  alt="Uploaded preview" 
-                  className="max-w-full max-h-[400px] md:max-h-[600px] object-contain"
-                />
+                {activeTool === 'crop' ? (
+                  <ReactCrop crop={crop} onChange={c => setCrop(c)} onComplete={(c) => setCompletedCrop(c)} aspect={16 / 9}>
+                    <img
+                      ref={imgRef}
+                      alt="Crop me" 
+                      src={image}
+                      onLoad={onImageLoad}
+                      className="max-w-full max-h-[400px] md:max-h-[600px] object-contain"
+                    />
+                  </ReactCrop>
+                ) : (
+                  <img
+                    src={processedImage || image}
+                    alt="Uploaded preview" 
+                    className="max-w-full max-h-[400px] md:max-h-[600px] object-contain"
+                  />
+                )}
+                {activeTool === 'crop' && completedCrop && (
+                  <canvas
+                    ref={previewCanvasRef}
+                    style={{
+                      width: completedCrop.width,
+                      height: completedCrop.height,
+                      display: 'none' // Hidden canvas for processing
+                    }}
+                  />
+                )}
               </div>
 
               {/* Tool Selection - Only show if no tool is active */}
@@ -252,6 +353,8 @@ function App() {
                         setActiveTool(null)
                         setProcessedImage(image)
                         setRotation(0)
+                        setCrop(undefined)
+                        setCompletedCrop(null)
                       }} 
                       variant="outline" 
                       size="sm"
