@@ -483,15 +483,17 @@ function App() {
                     const img = new Image();
                     img.onload = () => {
                       const canvas = filterCanvasRef.current;
-                      const ctx = canvas.getContext('2d');
-                      canvas.width = img.width;
-                      canvas.height = img.height;
+                      const ctx = canvas.getContext("2d");
+
+                      // Ensure canvas matches image dimensions for filter application
+                      canvas.width = img.naturalWidth;
+                      canvas.height = img.naturalHeight;
                       
                       // Apply CSS filters to canvas
                       ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) grayscale(${grayscale}%) sepia(${sepia}%) blur(${blur}px)`;
-                      ctx.drawImage(img, 0, 0);
+                      ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight);
                       
-                      setProcessedImage(canvas.toDataURL('image/png'));
+                      setProcessedImage(canvas.toDataURL("image/png"));
                     };
                     img.src = processedImage;
                   }
@@ -584,12 +586,25 @@ function App() {
                     }}
                   />
                 )}
-                <canvas
-                  ref={filterCanvasRef}
-                  style={{
-                    display: 'none' // Hidden canvas for filter processing
-                  }}
-                />
+                  <canvas
+                    ref={filterCanvasRef}
+                    style={{
+                      display: 'none' // Hidden canvas for filter processing
+                    }}
+                  />
+                  {/* Display the processed image with filters applied via CSS for real-time preview */}
+                  {activeTool === 'filters' && processedImage && (
+                    <img
+                      src={processedImage}
+                      alt="Filtered preview"
+                      style={{
+                        filter: `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) grayscale(${grayscale}%) sepia(${sepia}%) blur(${blur}px)`,
+                        maxWidth: '100%',
+                        maxHeight: '400px',
+                        objectFit: 'contain',
+                      }}
+                    />
+                  )}
               </div>
 
               {/* Tool Selection - Only show if no tool is active */}
