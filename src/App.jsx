@@ -102,7 +102,7 @@ function App() {
               {/* Tool Selection Tabs */}
               <div className="lg:col-span-1">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="grid grid-cols-3 lg:grid-cols-2 gap-2">
+                  <TabsList className="grid grid-cols-3 lg:grid-cols-3 gap-2">
                     <TabsTrigger value="rotate" className="flex flex-col items-center gap-1 p-2">
                       <RotateCw className="w-5 h-5" />
                       <span className="text-xs">Rotate</span>
