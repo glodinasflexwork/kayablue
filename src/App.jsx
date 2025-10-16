@@ -21,9 +21,16 @@ function App() {
   const [resizeHeight, setResizeHeight] = useState('')
   const [maintainAspectRatio, setMaintainAspectRatio] = useState(true)
   const [originalDimensions, setOriginalDimensions] = useState({ width: 0, height: 0 })
+  const [brightness, setBrightness] = useState(100)
+  const [contrast, setContrast] = useState(100)
+  const [saturation, setSaturation] = useState(100)
+  const [grayscale, setGrayscale] = useState(0)
+  const [sepia, setSepia] = useState(0)
+  const [blur, setBlur] = useState(0)
   const imgRef = useRef(null)
   const previewCanvasRef = useRef(null)
   const fileInputRef = useRef(null)
+  const filterCanvasRef = useRef(null)
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0]
@@ -116,6 +123,12 @@ function App() {
     setResizeWidth('')
     setResizeHeight('')
     setMaintainAspectRatio(true)
+    setBrightness(100)
+    setContrast(100)
+    setSaturation(100)
+    setGrayscale(0)
+    setSepia(0)
+    setBlur(0)
   }
 
   // Cropping functions
@@ -292,6 +305,7 @@ function App() {
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Drag to select the area you want to crop. Use the handles to adjust.
             </p>
+            <Button
                 onClick={() => {
                   if (completedCrop) {
                     performCrop();
@@ -363,6 +377,130 @@ function App() {
             <Button onClick={performResize} className="w-full">
               Apply Resize
             </Button>
+          </div>
+        )
+
+      case 'filters':
+        return (
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
+                Brightness: {brightness}%
+              </label>
+              <Slider
+                value={[brightness]}
+                onValueChange={(value) => setBrightness(value[0])}
+                min={0}
+                max={200}
+                step={1}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
+                Contrast: {contrast}%
+              </label>
+              <Slider
+                value={[contrast]}
+                onValueChange={(value) => setContrast(value[0])}
+                min={0}
+                max={200}
+                step={1}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
+                Saturation: {saturation}%
+              </label>
+              <Slider
+                value={[saturation]}
+                onValueChange={(value) => setSaturation(value[0])}
+                min={0}
+                max={200}
+                step={1}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
+                Grayscale: {grayscale}%
+              </label>
+              <Slider
+                value={[grayscale]}
+                onValueChange={(value) => setGrayscale(value[0])}
+                min={0}
+                max={100}
+                step={1}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
+                Sepia: {sepia}%
+              </label>
+              <Slider
+                value={[sepia]}
+                onValueChange={(value) => setSepia(value[0])}
+                min={0}
+                max={100}
+                step={1}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
+                Blur: {blur}px
+              </label>
+              <Slider
+                value={[blur]}
+                onValueChange={(value) => setBlur(value[0])}
+                min={0}
+                max={20}
+                step={1}
+                className="w-full"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                onClick={() => {
+                  setBrightness(100);
+                  setContrast(100);
+                  setSaturation(100);
+                  setGrayscale(0);
+                  setSepia(0);
+                  setBlur(0);
+                }}
+                variant="outline"
+                className="w-full"
+              >
+                Reset Filters
+              </Button>
+              <Button
+                onClick={() => {
+                  // Apply filters to the processedImage
+                  if (processedImage && filterCanvasRef.current) {
+                    const img = new Image();
+                    img.onload = () => {
+                      const canvas = filterCanvasRef.current;
+                      const ctx = canvas.getContext('2d');
+                      canvas.width = img.width;
+                      canvas.height = img.height;
+                      
+                      // Apply CSS filters to canvas
+                      ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) grayscale(${grayscale}%) sepia(${sepia}%) blur(${blur}px)`;
+                      ctx.drawImage(img, 0, 0);
+                      
+                      setProcessedImage(canvas.toDataURL('image/png'));
+                    };
+                    img.src = processedImage;
+                  }
+                }}
+                className="w-full"
+              >
+                Apply Filters
+              </Button>
+            </div>
           </div>
         )
 
@@ -446,6 +584,12 @@ function App() {
                     }}
                   />
                 )}
+                <canvas
+                  ref={filterCanvasRef}
+                  style={{
+                    display: 'none' // Hidden canvas for filter processing
+                  }}
+                />
               </div>
 
               {/* Tool Selection - Only show if no tool is active */}
