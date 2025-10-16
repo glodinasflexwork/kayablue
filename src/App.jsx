@@ -129,16 +129,8 @@ function App() {
     // Set initial crop to cover most of the image without a fixed aspect ratio
     // This will create a crop area that is 80% of the image width and height, centered.
     // Users can then freely adjust it.
-    const newCrop = centerCrop(
-      {
-        unit: '%',
-        width: 80,
-        height: 80,
-      },
-      width,
-      height
-    )
-    setCrop(newCrop)
+    // Do not set an initial crop area. Let the user define it from scratch.
+    setCrop(undefined)
   }
 
   // Resize function
@@ -424,7 +416,7 @@ function App() {
               {/* Image Preview */}
               <div className="flex items-center justify-center bg-gray-100 dark:bg-gray-900/50 rounded-lg overflow-hidden min-h-[300px] md:min-h-[400px]">
                 {activeTool === 'crop' ? (
-                  <ReactCrop crop={crop} onChange={c => setCrop(c)} onComplete={(c) => setCompletedCrop(c)} aspect={undefined}>
+                  <ReactCrop crop={crop} onChange={c => setCrop(c)} onComplete={(c) => setCompletedCrop(c)} aspect={undefined} minWidth={50} minHeight={50}>
                     <img
                       ref={imgRef}
                       alt="Crop me" 
