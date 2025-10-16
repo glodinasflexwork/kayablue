@@ -858,37 +858,13 @@ function App() {
                         let g = data[i + 1];
                         let b = data[i + 2];
                         
-                        // Apply brightness
-                        r = r * (brightness / 100);
-                        g = g * (brightness / 100);
-                        b = b * (brightness / 100);
-                        console.log(`Pixel ${i/4}: Brightness - R:${r}, G:${g}, B:${b}`);
-                        
-                        // Apply contrast
-                        const contrastFactor = (255 + contrast) / (255 - contrast);
-                        r = (r - 128) * contrastFactor + 128;
-                        g = (g - 128) * contrastFactor + 128;
-                        b = (b - 128) * contrastFactor + 128;
-                        
-                        // Apply saturation
-                        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-                        r = lum + (r - lum) * (saturation / 100);
-                        g = lum + (g - lum) * (saturation / 100);
-                        b = lum + (b - lum) * (saturation / 100);
-                        
-                        // Apply grayscale
-                        const grayValue = 0.299 * r + 0.587 * g + 0.114 * b;
-                        r = r + (grayValue - r) * (grayscale / 100);
-                        g = g + (grayValue - g) * (grayscale / 100);
-                        b = b + (grayValue - b) * (grayscale / 100);
-                        
-                        // Apply sepia
-                        const sepiaR = (r * 0.393 + g * 0.769 + b * 0.189);
-                        const sepiaG = (r * 0.349 + g * 0.686 + b * 0.168);
-                        const sepiaB = (r * 0.272 + g * 0.534 + b * 0.131);
-                        r = r + (sepiaR - r) * (sepia / 100);
-                        g = g + (sepiaG - g) * (sepia / 100);
-                        b = b + (sepiaB - b) * (sepia / 100);
+                        // Apply grayscale only for debugging
+                        if (grayscale > 0) {
+                          const grayValue = 0.299 * r + 0.587 * g + 0.114 * b;
+                          r = grayValue;
+                          g = grayValue;
+                          b = grayValue;
+                        }
                         
                         // Clamp values to 0-255
                         data[i] = Math.min(255, Math.max(0, r));
@@ -899,30 +875,8 @@ function App() {
                       // Put the modified image data back
                       ctx.putImageData(imageData, 0, 0);
                       console.log("Image data put back to canvas.");
-                      
-                      // Apply blur if needed (using CSS filter as it\'s complex to implement manually)
-                      if (blur > 0) {
-                        console.log("Applying blur filter:", blur);
-                        const tempCanvas = document.createElement(\'canvas\');
-                        tempCanvas.width = canvas.width;
-                        tempCanvas.height = canvas.height;
-                        const tempCtx = tempCanvas.getContext(\'2d\');
-                        
-                        // Draw the current (pixel-manipulated) image onto the temp canvas
-                        tempCtx.drawImage(canvas, 0, 0);
-                        
-                        // Apply blur filter to the temp canvas context
-                        tempCtx.filter = `blur(${blur}px)`;
-                        
-                        // Draw the blurred image back onto the main canvas
-                        // This needs to be done *after* the filter is applied to the tempCtx
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        ctx.drawImage(tempCanvas, 0, 0);
-                        console.log("Blur applied to canvas.");
-                      }
-
-                      // Reset filter context after all operations
-                      ctx.filter = 'none';
+                                           // Reset filter context after all operations
+                      ctx.filter = \'none\';
                       
                       const finalProcessedImage = canvas.toDataURL("image/png");
                       console.log("Final processed image data URL generated. Length:", finalProcessedImage.length);
