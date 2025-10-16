@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button.jsx'
 import { Card } from '@/components/ui/card.jsx'
 import { Upload, Download, RotateCw, Crop, Maximize, Palette, Archive, FileImage, RotateCcw } from 'lucide-react'
+import { Input } from '@/components/ui/input.jsx'
 import { Slider } from '@/components/ui/slider.jsx'
 import ReactCrop, { centerCrop } from 'react-image-crop'
 import 'react-image-crop/dist/ReactCrop.css'
@@ -16,6 +17,10 @@ function App() {
   const [rotation, setRotation] = useState(0)
   const [crop, setCrop] = useState()
   const [completedCrop, setCompletedCrop] = useState(null)
+  const [resizeWidth, setResizeWidth] = useState('')
+  const [resizeHeight, setResizeHeight] = useState('')
+  const [maintainAspectRatio, setMaintainAspectRatio] = useState(true)
+  const [originalDimensions, setOriginalDimensions] = useState({ width: 0, height: 0 })
   const imgRef = useRef(null)
   const previewCanvasRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -98,12 +103,19 @@ function App() {
     setRotation(0)
     setCrop(undefined)
     setCompletedCrop(null)
+    setResizeWidth('')
+    setResizeHeight('')
+    setMaintainAspectRatio(true)
   }
 
   // Cropping functions
   function onImageLoad(e) {
     imgRef.current = e.currentTarget
-    const { width, height } = e.currentTarget
+    const { width, height, naturalWidth, naturalHeight } = e.currentTarget
+    // Set original dimensions for resize tool
+    setOriginalDimensions({ width: naturalWidth, height: naturalHeight })
+    setResizeWidth(naturalWidth.toString())
+    setResizeHeight(naturalHeight.toString())
     // Set initial crop to cover most of the image without a fixed aspect ratio
     // This will create a crop area that is 80% of the image width and height, centered.
     // Users can then freely adjust it.
@@ -117,6 +129,28 @@ function App() {
       height
     )
     setCrop(newCrop)
+  }
+
+  // Resize function
+  const performResize = () => {
+    if (!processedImage || !resizeWidth || !resizeHeight) return
+
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+
+      canvas.width = parseInt(resizeWidth)
+      canvas.height = parseInt(resizeHeight)
+
+      ctx.imageSmoothingQuality = 'high'
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+
+      setProcessedImage(canvas.toDataURL('image/png'))
+      // Update original dimensions to reflect the new size
+      setOriginalDimensions({ width: canvas.width, height: canvas.height })
+    }
+    img.src = processedImage
   }
 
   // Function to perform the actual crop on the current processedImage
@@ -241,6 +275,70 @@ function App() {
             </p>
             <Button onClick={performCrop} className="w-full">
               Apply Crop
+            </Button>
+          </div>
+        )
+
+      case 'resize':
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Enter new dimensions for your image. Current size: {originalDimensions.width} × {originalDimensions.height}px
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                  Width (px)
+                </label>
+                <Input
+                  type="number"
+                  value={resizeWidth}
+                  onChange={(e) => {
+                    const newWidth = e.target.value
+                    setResizeWidth(newWidth)
+                    if (maintainAspectRatio && newWidth && originalDimensions.width > 0) {
+                      const aspectRatio = originalDimensions.height / originalDimensions.width
+                      setResizeHeight(Math.round(newWidth * aspectRatio).toString())
+                    }
+                  }}
+                  placeholder="Width"
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                  Height (px)
+                </label>
+                <Input
+                  type="number"
+                  value={resizeHeight}
+                  onChange={(e) => {
+                    const newHeight = e.target.value
+                    setResizeHeight(newHeight)
+                    if (maintainAspectRatio && newHeight && originalDimensions.height > 0) {
+                      const aspectRatio = originalDimensions.width / originalDimensions.height
+                      setResizeWidth(Math.round(newHeight * aspectRatio).toString())
+                    }
+                  }}
+                  placeholder="Height"
+                  className="w-full"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="maintainAspect"
+                checked={maintainAspectRatio}
+                onChange={(e) => setMaintainAspectRatio(e.target.checked)}
+                className="w-4 h-4"
+              />
+              <label htmlFor="maintainAspect" className="text-sm text-gray-700 dark:text-gray-300">
+                Maintain aspect ratio
+              </label>
+            </div>
+            <Button onClick={performResize} className="w-full">
+              Apply Resize
             </Button>
           </div>
         )
