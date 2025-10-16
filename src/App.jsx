@@ -2,14 +2,13 @@
 import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button.jsx'
 import { Card } from '@/components/ui/card.jsx'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.jsx'
 import { Upload, Download, RotateCw, Crop, Maximize, Palette, Archive, FileImage } from 'lucide-react'
 
 import './App.css'
 
 function App() {
   const [image, setImage] = useState(null)
-  const [activeTab, setActiveTab] = useState('rotate')
+  const [activeTool, setActiveTool] = useState(null)
   const fileInputRef = useRef(null)
 
   const handleImageUpload = (e) => {
@@ -18,6 +17,7 @@ function App() {
       const reader = new FileReader()
       reader.onload = (event) => {
         setImage(event.target.result)
+        setActiveTool(null) // Reset tool selection when new image is uploaded
       }
       reader.readAsDataURL(file)
     }
@@ -36,29 +36,39 @@ function App() {
 
   const handleReset = () => {
     setImage(null)
+    setActiveTool(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
   }
 
+  const tools = [
+    { id: 'rotate', name: 'Rotate', icon: RotateCw, description: 'Rotate your image by any angle' },
+    { id: 'crop', name: 'Crop', icon: Crop, description: 'Select and crop a specific area' },
+    { id: 'resize', name: 'Resize', icon: Maximize, description: 'Change the dimensions' },
+    { id: 'filters', name: 'Filters', icon: Palette, description: 'Adjust brightness, contrast, and more' },
+    { id: 'compress', name: 'Compress', icon: Archive, description: 'Reduce file size' },
+    { id: 'format', name: 'Format', icon: FileImage, description: 'Convert between formats' },
+  ]
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
       <div className="w-full max-w-6xl">
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent mb-2">
             KAYABLUE
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 text-lg">
+          <p className="text-gray-600 dark:text-gray-400 text-base md:text-lg">
             Professional Image Editing Tools
           </p>
         </div>
 
-        <Card className="p-8 shadow-2xl backdrop-blur-sm bg-white/90 dark:bg-gray-800/90">
+        <Card className="p-4 md:p-8 shadow-2xl backdrop-blur-sm bg-white/90 dark:bg-gray-800/90">
           {!image ? (
-            <div className="flex flex-col items-center justify-center py-16">
+            <div className="flex flex-col items-center justify-center py-12 md:py-16">
               <div 
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full max-w-md border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-xl p-12 cursor-pointer hover:border-blue-500 dark:hover:border-blue-500 transition-all hover:bg-blue-50/50 dark:hover:bg-blue-900/20 group"
+                className="w-full max-w-md border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-xl p-8 md:p-12 cursor-pointer hover:border-blue-500 dark:hover:border-blue-500 transition-all hover:bg-blue-50/50 dark:hover:bg-blue-900/20 group"
               >
                 <div className="flex flex-col items-center gap-4">
                   <div className="bg-blue-100 dark:bg-blue-900/30 p-4 rounded-full group-hover:scale-110 transition-transform">
@@ -77,136 +87,89 @@ function App() {
               />
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="space-y-6">
               {/* Image Preview */}
-              <div className="lg:col-span-2 flex flex-col gap-4">
-                <div className="flex items-center justify-center bg-gray-100 dark:bg-gray-900/50 rounded-lg overflow-hidden min-h-[400px]">
-                  <img
-                    src={image}
-                    alt="Uploaded preview" 
-                    className="max-w-full max-h-[600px] object-contain"
-                  />
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <Button onClick={handleDownload} className="w-full">
-                    <Download className="w-4 h-4 mr-2" />
-                    Download Image
-                  </Button>
-                  <Button onClick={handleReset} variant="secondary" className="w-full">
-                    Upload New Image
-                  </Button>
-                </div>
+              <div className="flex items-center justify-center bg-gray-100 dark:bg-gray-900/50 rounded-lg overflow-hidden min-h-[300px] md:min-h-[400px]">
+                <img
+                  src={image}
+                  alt="Uploaded preview" 
+                  className="max-w-full max-h-[400px] md:max-h-[600px] object-contain"
+                />
               </div>
 
-              {/* Tool Selection Tabs */}
-              <div className="lg:col-span-1">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="grid grid-cols-3 lg:grid-cols-3 gap-2">
-                    <TabsTrigger value="rotate" className="flex flex-col items-center gap-1 p-2">
-                      <RotateCw className="w-5 h-5" />
-                      <span className="text-xs">Rotate</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="crop" className="flex flex-col items-center gap-1 p-2">
-                      <Crop className="w-5 h-5" />
-                      <span className="text-xs">Crop</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="resize" className="flex flex-col items-center gap-1 p-2">
-                      <Maximize className="w-5 h-5" />
-                      <span className="text-xs">Resize</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="filters" className="flex flex-col items-center gap-1 p-2">
-                      <Palette className="w-5 h-5" />
-                      <span className="text-xs">Filters</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="compress" className="flex flex-col items-center gap-1 p-2">
-                      <Archive className="w-5 h-5" />
-                      <span className="text-xs">Compress</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="format" className="flex flex-col items-center gap-1 p-2">
-                      <FileImage className="w-5 h-5" />
-                      <span className="text-xs">Format</span>
-                    </TabsTrigger>
-                  </TabsList>
+              {/* Tool Selection - Only show if no tool is active */}
+              {!activeTool && (
+                <div>
+                  <h2 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-200">
+                    Select a tool to edit your image:
+                  </h2>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+                    {tools.map((tool) => {
+                      const Icon = tool.icon
+                      return (
+                        <button
+                          key={tool.id}
+                          onClick={() => setActiveTool(tool.id)}
+                          className="flex flex-col items-center gap-2 p-4 md:p-6 border-2 border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all group"
+                        >
+                          <Icon className="w-6 h-6 md:w-8 md:h-8 text-blue-500 group-hover:scale-110 transition-transform" />
+                          <span className="font-semibold text-sm md:text-base text-gray-700 dark:text-gray-300">
+                            {tool.name}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 text-center hidden md:block">
+                            {tool.description}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
 
-                  <TabsContent value="rotate" className="mt-4">
-                    <div className="p-4 border rounded-lg">
-                      <h3 className="font-semibold mb-2">Rotate Image</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Rotate your image by any angle.
-                      </p>
-                      <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">
-                        Coming soon...
-                      </p>
-                    </div>
-                  </TabsContent>
+              {/* Active Tool Panel */}
+              {activeTool && (
+                <div className="border-2 border-blue-200 dark:border-blue-800 rounded-lg p-4 md:p-6 bg-blue-50/50 dark:bg-blue-900/10">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg md:text-xl font-semibold text-gray-800 dark:text-gray-200">
+                      {tools.find(t => t.id === activeTool)?.name}
+                    </h2>
+                    <Button 
+                      onClick={() => setActiveTool(null)} 
+                      variant="outline" 
+                      size="sm"
+                      className="text-xs md:text-sm"
+                    >
+                      Back to Tools
+                    </Button>
+                  </div>
+                  
+                  <div className="text-center py-8">
+                    <p className="text-gray-600 dark:text-gray-400 mb-2">
+                      {tools.find(t => t.id === activeTool)?.description}
+                    </p>
+                    <p className="text-blue-600 dark:text-blue-400 font-medium">
+                      Coming soon...
+                    </p>
+                  </div>
+                </div>
+              )}
 
-                  <TabsContent value="crop" className="mt-4">
-                    <div className="p-4 border rounded-lg">
-                      <h3 className="font-semibold mb-2">Crop Image</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Select and crop a specific area of your image.
-                      </p>
-                      <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">
-                        Coming soon...
-                      </p>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="resize" className="mt-4">
-                    <div className="p-4 border rounded-lg">
-                      <h3 className="font-semibold mb-2">Resize Image</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Change the dimensions of your image.
-                      </p>
-                      <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">
-                        Coming soon...
-                      </p>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="filters" className="mt-4">
-                    <div className="p-4 border rounded-lg">
-                      <h3 className="font-semibold mb-2">Apply Filters</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Adjust brightness, contrast, saturation, and more.
-                      </p>
-                      <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">
-                        Coming soon...
-                      </p>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="compress" className="mt-4">
-                    <div className="p-4 border rounded-lg">
-                      <h3 className="font-semibold mb-2">Compress Image</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Reduce file size while maintaining quality.
-                      </p>
-                      <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">
-                        Coming soon...
-                      </p>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="format" className="mt-4">
-                    <div className="p-4 border rounded-lg">
-                      <h3 className="font-semibold mb-2">Convert Format</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Convert between PNG, JPEG, and WebP formats.
-                      </p>
-                      <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">
-                        Coming soon...
-                      </p>
-                    </div>
-                  </TabsContent>
-                </Tabs>
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-center gap-3 md:gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <Button onClick={handleDownload} className="w-full sm:w-auto">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Image
+                </Button>
+                <Button onClick={handleReset} variant="secondary" className="w-full sm:w-auto">
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload New Image
+                </Button>
               </div>
             </div>
           )}
         </Card>
 
-        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-8">
+        <p className="text-center text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-6 md:mt-8">
           All processing happens in your browser. Your images are never uploaded to any server.
         </p>
       </div>
