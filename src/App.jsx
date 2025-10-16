@@ -66,7 +66,7 @@ function App() {
       // and update processedImage with the new rotated version.
       rotateImage(rotation, processedImage)
     }
-  }, [rotation, activeTool])
+  }, [rotation, activeTool, processedImage]) // Added processedImage to dependencies
 
   const handleDownload = () => {
     if (!processedImage) return
@@ -160,17 +160,15 @@ function App() {
     }
   }
 
-  // This useEffect should only trigger when completedCrop changes and we are in crop mode
-  // The 'Apply Crop' button will now directly call performCrop.
-  // This useEffect is no longer needed for triggering the crop, but can be used for other side effects if needed.
-  // For now, I'm commenting it out to ensure the button is the sole trigger.
-  /*
+  // This useEffect will now ensure that when the crop area is completed, it updates the processedImage
   useEffect(() => {
     if (activeTool === 'crop' && completedCrop) {
-      performCrop()
+      // Only perform crop if the imageRef is valid and the crop dimensions are valid
+      if (imgRef.current && completedCrop.width > 0 && completedCrop.height > 0) {
+        performCrop();
+      }
     }
-  }, [completedCrop, activeTool])
-  */
+  }, [completedCrop, activeTool]); // Re-added completedCrop to dependencies
 
   const tools = [
     { id: 'rotate', name: 'Rotate', icon: RotateCw, description: 'Rotate your image by any angle' },
