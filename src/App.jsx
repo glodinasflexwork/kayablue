@@ -400,12 +400,170 @@ function App() {
         )
 
       case 'filters':
+        const applyPreset = (preset) => {
+          switch (preset) {
+            case 'none':
+              setBrightness(100);
+              setContrast(100);
+              setSaturation(100);
+              setGrayscale(0);
+              setSepia(0);
+              setBlur(0);
+              break;
+            case 'bw':
+              setBrightness(100);
+              setContrast(110);
+              setSaturation(0);
+              setGrayscale(100);
+              setSepia(0);
+              setBlur(0);
+              break;
+            case 'vintage':
+              setBrightness(110);
+              setContrast(90);
+              setSaturation(80);
+              setGrayscale(0);
+              setSepia(40);
+              setBlur(0);
+              break;
+            case 'vivid':
+              setBrightness(105);
+              setContrast(120);
+              setSaturation(150);
+              setGrayscale(0);
+              setSepia(0);
+              setBlur(0);
+              break;
+            case 'cool':
+              setBrightness(100);
+              setContrast(105);
+              setSaturation(120);
+              setGrayscale(0);
+              setSepia(0);
+              setBlur(0);
+              break;
+            case 'warm':
+              setBrightness(110);
+              setContrast(100);
+              setSaturation(110);
+              setGrayscale(0);
+              setSepia(25);
+              setBlur(0);
+              break;
+            case 'dramatic':
+              setBrightness(90);
+              setContrast(140);
+              setSaturation(90);
+              setGrayscale(0);
+              setSepia(0);
+              setBlur(0);
+              break;
+            default:
+              break;
+          }
+        };
+
         return (
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
-                Brightness: {brightness}%
+                Filter Presets
               </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => applyPreset('none')}
+                  className="text-xs"
+                >
+                  None
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => applyPreset('bw')}
+                  className="text-xs"
+                >
+                  Black & White
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => applyPreset('vintage')}
+                  className="text-xs"
+                >
+                  Vintage
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => applyPreset('vivid')}
+                  className="text-xs"
+                >
+                  Vivid
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => applyPreset('cool')}
+                  className="text-xs"
+                >
+                  Cool
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => applyPreset('warm')}
+                  className="text-xs"
+                >
+                  Warm
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => applyPreset('dramatic')}
+                  className="text-xs"
+                >
+                  Dramatic
+                </Button>
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Brightness
+                </label>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setBrightness(Math.max(0, brightness - 1))}
+                    className="h-7 w-7 p-0"
+                  >
+                    -
+                  </Button>
+                  <input
+                    type="number"
+                    value={brightness}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 0;
+                      setBrightness(Math.min(200, Math.max(0, val)));
+                    }}
+                    className="w-16 h-7 px-2 text-center border rounded text-sm"
+                    min={0}
+                    max={200}
+                  />
+                  <span className="text-sm text-gray-500">%</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setBrightness(Math.min(200, brightness + 1))}
+                    className="h-7 w-7 p-0"
+                  >
+                    +
+                  </Button>
+                </div>
+              </div>
               <Slider
                 value={[brightness]}
                 onValueChange={(value) => setBrightness(value[0])}
@@ -416,9 +574,41 @@ function App() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
-                Contrast: {contrast}%
-              </label>
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Contrast
+                </label>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setContrast(Math.max(0, contrast - 1))}
+                    className="h-7 w-7 p-0"
+                  >
+                    -
+                  </Button>
+                  <input
+                    type="number"
+                    value={contrast}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 0;
+                      setContrast(Math.min(200, Math.max(0, val)));
+                    }}
+                    className="w-16 h-7 px-2 text-center border rounded text-sm"
+                    min={0}
+                    max={200}
+                  />
+                  <span className="text-sm text-gray-500">%</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setContrast(Math.min(200, contrast + 1))}
+                    className="h-7 w-7 p-0"
+                  >
+                    +
+                  </Button>
+                </div>
+              </div>
               <Slider
                 value={[contrast]}
                 onValueChange={(value) => setContrast(value[0])}
@@ -429,9 +619,41 @@ function App() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
-                Saturation: {saturation}%
-              </label>
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Saturation
+                </label>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSaturation(Math.max(0, saturation - 1))}
+                    className="h-7 w-7 p-0"
+                  >
+                    -
+                  </Button>
+                  <input
+                    type="number"
+                    value={saturation}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 0;
+                      setSaturation(Math.min(200, Math.max(0, val)));
+                    }}
+                    className="w-16 h-7 px-2 text-center border rounded text-sm"
+                    min={0}
+                    max={200}
+                  />
+                  <span className="text-sm text-gray-500">%</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSaturation(Math.min(200, saturation + 1))}
+                    className="h-7 w-7 p-0"
+                  >
+                    +
+                  </Button>
+                </div>
+              </div>
               <Slider
                 value={[saturation]}
                 onValueChange={(value) => setSaturation(value[0])}
@@ -442,9 +664,41 @@ function App() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
-                Grayscale: {grayscale}%
-              </label>
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Grayscale
+                </label>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setGrayscale(Math.max(0, grayscale - 1))}
+                    className="h-7 w-7 p-0"
+                  >
+                    -
+                  </Button>
+                  <input
+                    type="number"
+                    value={grayscale}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 0;
+                      setGrayscale(Math.min(100, Math.max(0, val)));
+                    }}
+                    className="w-16 h-7 px-2 text-center border rounded text-sm"
+                    min={0}
+                    max={100}
+                  />
+                  <span className="text-sm text-gray-500">%</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setGrayscale(Math.min(100, grayscale + 1))}
+                    className="h-7 w-7 p-0"
+                  >
+                    +
+                  </Button>
+                </div>
+              </div>
               <Slider
                 value={[grayscale]}
                 onValueChange={(value) => setGrayscale(value[0])}
@@ -455,9 +709,41 @@ function App() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
-                Sepia: {sepia}%
-              </label>
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Sepia
+                </label>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSepia(Math.max(0, sepia - 1))}
+                    className="h-7 w-7 p-0"
+                  >
+                    -
+                  </Button>
+                  <input
+                    type="number"
+                    value={sepia}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 0;
+                      setSepia(Math.min(100, Math.max(0, val)));
+                    }}
+                    className="w-16 h-7 px-2 text-center border rounded text-sm"
+                    min={0}
+                    max={100}
+                  />
+                  <span className="text-sm text-gray-500">%</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSepia(Math.min(100, sepia + 1))}
+                    className="h-7 w-7 p-0"
+                  >
+                    +
+                  </Button>
+                </div>
+              </div>
               <Slider
                 value={[sepia]}
                 onValueChange={(value) => setSepia(value[0])}
@@ -468,9 +754,41 @@ function App() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
-                Blur: {blur}px
-              </label>
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Blur
+                </label>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setBlur(Math.max(0, blur - 1))}
+                    className="h-7 w-7 p-0"
+                  >
+                    -
+                  </Button>
+                  <input
+                    type="number"
+                    value={blur}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 0;
+                      setBlur(Math.min(20, Math.max(0, val)));
+                    }}
+                    className="w-16 h-7 px-2 text-center border rounded text-sm"
+                    min={0}
+                    max={20}
+                  />
+                  <span className="text-sm text-gray-500">px</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setBlur(Math.min(20, blur + 1))}
+                    className="h-7 w-7 p-0"
+                  >
+                    +
+                  </Button>
+                </div>
+              </div>
               <Slider
                 value={[blur]}
                 onValueChange={(value) => setBlur(value[0])}
