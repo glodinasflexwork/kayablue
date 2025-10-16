@@ -1,15 +1,19 @@
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button.jsx'
 import { Card } from '@/components/ui/card.jsx'
-import { Upload, Download, RotateCw, Crop, Maximize, Palette, Archive, FileImage } from 'lucide-react'
+import { Upload, Download, RotateCw, Crop, Maximize, Palette, Archive, FileImage, RotateCcw } from 'lucide-react'
+import { Slider } from '@/components/ui/slider.jsx'
 
 import './App.css'
 
 function App() {
   const [image, setImage] = useState(null)
+  const [processedImage, setProcessedImage] = useState(null)
   const [activeTool, setActiveTool] = useState(null)
+  const [rotation, setRotation] = useState(0)
   const fileInputRef = useRef(null)
+  const canvasRef = useRef(null)
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0]
@@ -17,18 +21,52 @@ function App() {
       const reader = new FileReader()
       reader.onload = (event) => {
         setImage(event.target.result)
-        setActiveTool(null) // Reset tool selection when new image is uploaded
+        setProcessedImage(event.target.result)
+        setActiveTool(null)
+        setRotation(0)
       }
       reader.readAsDataURL(file)
     }
   }
 
-  const handleDownload = () => {
+  const rotateImage = (degrees) => {
     if (!image) return
 
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+
+      // Calculate new canvas size based on rotation
+      const rad = (degrees * Math.PI) / 180
+      const sin = Math.abs(Math.sin(rad))
+      const cos = Math.abs(Math.cos(rad))
+      
+      canvas.width = img.width * cos + img.height * sin
+      canvas.height = img.width * sin + img.height * cos
+
+      // Translate to center and rotate
+      ctx.translate(canvas.width / 2, canvas.height / 2)
+      ctx.rotate(rad)
+      ctx.drawImage(img, -img.width / 2, -img.height / 2)
+
+      setProcessedImage(canvas.toDataURL('image/png'))
+    }
+    img.src = image
+  }
+
+  useEffect(() => {
+    if (activeTool === 'rotate' && image) {
+      rotateImage(rotation)
+    }
+  }, [rotation, activeTool])
+
+  const handleDownload = () => {
+    if (!processedImage) return
+
     const a = document.createElement('a')
-    a.href = image
-    a.download = `kayablue-image-${Date.now()}.png`
+    a.href = processedImage
+    a.download = `kayablue-${activeTool || 'image'}-${Date.now()}.png`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -36,10 +74,18 @@ function App() {
 
   const handleReset = () => {
     setImage(null)
+    setProcessedImage(null)
     setActiveTool(null)
+    setRotation(0)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
+  }
+
+  const handleToolChange = (toolId) => {
+    setActiveTool(toolId)
+    setProcessedImage(image) // Reset to original image
+    setRotation(0) // Reset rotation
   }
 
   const tools = [
@@ -50,6 +96,74 @@ function App() {
     { id: 'compress', name: 'Compress', icon: Archive, description: 'Reduce file size' },
     { id: 'format', name: 'Format', icon: FileImage, description: 'Convert between formats' },
   ]
+
+  const renderToolPanel = () => {
+    switch (activeTool) {
+      case 'rotate':
+        return (
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
+                Rotation Angle: {rotation}°
+              </label>
+              <Slider
+                value={[rotation]}
+                onValueChange={(value) => setRotation(value[0])}
+                min={0}
+                max={360}
+                step={1}
+                className="w-full"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                onClick={() => setRotation((prev) => (prev + 90) % 360)}
+                variant="outline"
+                className="w-full"
+              >
+                <RotateCw className="w-4 h-4 mr-2" />
+                90° Right
+              </Button>
+              <Button
+                onClick={() => setRotation((prev) => (prev - 90 + 360) % 360)}
+                variant="outline"
+                className="w-full"
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                90° Left
+              </Button>
+              <Button
+                onClick={() => setRotation(180)}
+                variant="outline"
+                className="w-full"
+              >
+                180°
+              </Button>
+              <Button
+                onClick={() => setRotation(0)}
+                variant="outline"
+                className="w-full"
+              >
+                Reset
+              </Button>
+            </div>
+          </div>
+        )
+
+      default:
+        return (
+          <div className="text-center py-8">
+            <p className="text-gray-600 dark:text-gray-400 mb-2">
+              {tools.find(t => t.id === activeTool)?.description}
+            </p>
+            <p className="text-blue-600 dark:text-blue-400 font-medium">
+              Coming soon...
+            </p>
+          </div>
+        )
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
@@ -91,7 +205,7 @@ function App() {
               {/* Image Preview */}
               <div className="flex items-center justify-center bg-gray-100 dark:bg-gray-900/50 rounded-lg overflow-hidden min-h-[300px] md:min-h-[400px]">
                 <img
-                  src={image}
+                  src={processedImage || image}
                   alt="Uploaded preview" 
                   className="max-w-full max-h-[400px] md:max-h-[600px] object-contain"
                 />
@@ -109,7 +223,7 @@ function App() {
                       return (
                         <button
                           key={tool.id}
-                          onClick={() => setActiveTool(tool.id)}
+                          onClick={() => handleToolChange(tool.id)}
                           className="flex flex-col items-center gap-2 p-4 md:p-6 border-2 border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all group"
                         >
                           <Icon className="w-6 h-6 md:w-8 md:h-8 text-blue-500 group-hover:scale-110 transition-transform" />
@@ -134,7 +248,11 @@ function App() {
                       {tools.find(t => t.id === activeTool)?.name}
                     </h2>
                     <Button 
-                      onClick={() => setActiveTool(null)} 
+                      onClick={() => {
+                        setActiveTool(null)
+                        setProcessedImage(image)
+                        setRotation(0)
+                      }} 
                       variant="outline" 
                       size="sm"
                       className="text-xs md:text-sm"
@@ -143,14 +261,7 @@ function App() {
                     </Button>
                   </div>
                   
-                  <div className="text-center py-8">
-                    <p className="text-gray-600 dark:text-gray-400 mb-2">
-                      {tools.find(t => t.id === activeTool)?.description}
-                    </p>
-                    <p className="text-blue-600 dark:text-blue-400 font-medium">
-                      Coming soon...
-                    </p>
-                  </div>
+                  {renderToolPanel()}
                 </div>
               )}
 
