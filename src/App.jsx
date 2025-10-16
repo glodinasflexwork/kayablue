@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button.jsx'
 import { Card } from '@/components/ui/card.jsx'
 import { Slider } from '@/components/ui/slider.jsx'
-import { Upload, Download, RotateCw, RotateCcw, RefreshCw, Crop } from 'lucide-react'
+import { Input } from '@/components/ui/input.jsx'
+import { Upload, Download, RotateCw, RotateCcw, RefreshCw, Crop, Maximize } from 'lucide-react'
 
 import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop'
 import 'react-image-crop/dist/ReactCrop.css'
@@ -20,7 +21,11 @@ function App() {
   const [completedCrop, setCompletedCrop] = useState(null)
   const [scale, setScale] = useState(1)
   const [rotate, setRotate] = useState(0)
-  const [aspect, setAspect] = useState(16 / 9)
+  const [aspect, setAspect] = useState(undefined) // Changed to undefined for free aspect ratio crop
+
+  const [originalDimensions, setOriginalDimensions] = useState({ width: 0, height: 0 })
+  const [newWidth, setNewWidth] = useState(0)
+  const [newHeight, setNewHeight] = useState(0)
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0]
@@ -30,7 +35,15 @@ function App() {
         setImage(event.target.result)
         setRotation(0)
         setCompletedCrop(null)
-        setCrop(undefined) // Clear crop when new image is uploaded
+        setCrop(undefined)
+        // Reset dimensions for new image
+        const img = new Image()
+        img.onload = () => {
+          setOriginalDimensions({ width: img.width, height: img.height })
+          setNewWidth(img.width)
+          setNewHeight(img.height)
+        }
+        img.src = event.target.result
       }
       reader.readAsDataURL(file)
     }
@@ -38,17 +51,24 @@ function App() {
 
   const onImageLoad = (e) => {
     imgRef.current = e.currentTarget
-    const { width, height } = e.currentTarget
-    setCrop(centerCrop(
-      makeAspectCrop(
-        { unit: '%', width: 90 },
-        aspect,
-        width,
-        height,
-      ),
-      width,
-      height,
-    ))
+    const { naturalWidth, naturalHeight } = e.currentTarget
+    setOriginalDimensions({ width: naturalWidth, height: naturalHeight })
+    setNewWidth(naturalWidth)
+    setNewHeight(naturalHeight)
+
+    // Set initial crop if not already set
+    if (!crop) {
+      setCrop(centerCrop(
+        makeAspectCrop(
+          { unit: '%', width: 90 },
+          aspect,
+          naturalWidth,
+          naturalHeight,
+        ),
+        naturalWidth,
+        naturalHeight,
+      ))
+    }
   }
 
   const handleRotateLeft = () => {
@@ -63,6 +83,10 @@ function App() {
     setRotation(0)
     setCompletedCrop(null)
     setCrop(undefined)
+    if (imgRef.current) {
+      setNewWidth(imgRef.current.naturalWidth)
+      setNewHeight(imgRef.current.naturalHeight)
+    }
   }
 
   const handleCrop = async () => {
@@ -70,12 +94,12 @@ function App() {
       return
     }
 
-    const image = imgRef.current
+    const imageElement = imgRef.current
     const canvas = previewCanvasRef.current
     const ctx = canvas.getContext('2d')
 
-    const scaleX = image.naturalWidth / image.width
-    const scaleY = image.naturalHeight / image.height
+    const scaleX = imageElement.naturalWidth / imageElement.width
+    const scaleY = imageElement.naturalHeight / imageElement.height
     const pixelRatio = window.devicePixelRatio
 
     canvas.width = Math.floor(completedCrop.width * scaleX * pixelRatio)
@@ -88,7 +112,7 @@ function App() {
     const cropY = completedCrop.y * scaleY
 
     ctx.drawImage(
-      image,
+      imageElement,
       cropX,
       cropY,
       completedCrop.width * scaleX,
@@ -99,12 +123,58 @@ function App() {
       completedCrop.height * scaleY,
     )
 
-    // Convert the cropped canvas to a data URL and set it as the new image
     const croppedImage = canvas.toDataURL('image/png')
     setImage(croppedImage)
-    setRotation(0) // Reset rotation after cropping
-    setCompletedCrop(null) // Clear completed crop
-    setCrop(undefined) // Clear crop selection
+    setRotation(0)
+    setCompletedCrop(null)
+    setCrop(undefined)
+    // Update dimensions after crop
+    const newImg = new Image()
+    newImg.onload = () => {
+      setOriginalDimensions({ width: newImg.width, height: newImg.height })
+      setNewWidth(newImg.width)
+      setNewHeight(newImg.height)
+    }
+    newImg.src = croppedImage
+  }
+
+  const handleResize = () => {
+    if (!image || !newWidth || !newHeight) return
+
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    const img = new Image()
+
+    img.onload = () => {
+      canvas.width = newWidth
+      canvas.height = newHeight
+      ctx.drawImage(img, 0, 0, newWidth, newHeight)
+
+      const resizedImage = canvas.toDataURL('image/png')
+      setImage(resizedImage)
+      setOriginalDimensions({ width: newWidth, height: newHeight })
+    }
+    img.src = image
+  }
+
+  const handleWidthChange = (e) => {
+    const width = parseInt(e.target.value)
+    if (!isNaN(width) && originalDimensions.width > 0) {
+      setNewWidth(width)
+      setNewHeight(Math.round(width / originalDimensions.width * originalDimensions.height))
+    } else if (e.target.value === '') {
+      setNewWidth('')
+    }
+  }
+
+  const handleHeightChange = (e) => {
+    const height = parseInt(e.target.value)
+    if (!isNaN(height) && originalDimensions.height > 0) {
+      setNewHeight(height)
+      setNewWidth(Math.round(height / originalDimensions.height * originalDimensions.width))
+    } else if (e.target.value === '') {
+      setNewHeight('')
+    }
   }
 
   const handleDownload = () => {
@@ -149,7 +219,7 @@ function App() {
             KAYABLUE
           </h1>
           <p className="text-gray-600 dark:text-gray-400 text-lg">
-            Upload, Rotate & Crop Your Images
+            Upload, Rotate, Crop & Resize Your Images
           </p>
         </div>
 
@@ -259,6 +329,35 @@ function App() {
                   </Button>
                 </div>
 
+                <div className="flex flex-wrap gap-3 mt-4">
+                  <div className="flex items-center gap-2 flex-1 min-w-[140px]">
+                    <Input
+                      type="number"
+                      placeholder="Width"
+                      value={newWidth === 0 ? '' : newWidth}
+                      onChange={handleWidthChange}
+                      className="w-full"
+                    />
+                    <span className="text-gray-700 dark:text-gray-300">x</span>
+                    <Input
+                      type="number"
+                      placeholder="Height"
+                      value={newHeight === 0 ? '' : newHeight}
+                      onChange={handleHeightChange}
+                      className="w-full"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleResize}
+                    variant="outline"
+                    className="flex-1 min-w-[140px]"
+                    disabled={!newWidth || !newHeight || (newWidth === originalDimensions.width && newHeight === originalDimensions.height)}
+                  >
+                    <Maximize className="w-4 h-4 mr-2" />
+                    Apply Resize
+                  </Button>
+                </div>
+
                 <div className="flex gap-3 pt-4">
                   <Button
                     onClick={() => {
@@ -266,6 +365,9 @@ function App() {
                       setRotation(0)
                       setCompletedCrop(null)
                       setCrop(undefined)
+                      setOriginalDimensions({ width: 0, height: 0 })
+                      setNewWidth(0)
+                      setNewHeight(0)
                       if (fileInputRef.current) fileInputRef.current.value = ''
                     }}
                     variant="outline"
