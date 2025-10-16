@@ -101,13 +101,13 @@ function App() {
   function onImageLoad(e) {
     imgRef.current = e.currentTarget
     const { width, height } = e.currentTarget
+    // Set initial crop to cover most of the image without a fixed aspect ratio
     const newCrop = centerCrop(
-      makeAspectCrop(
-        { unit: '%', width: 90 },
-        16 / 9,
-        width,
-        height
-      ),
+      {
+        unit: '%',
+        width: 80,
+        height: 80,
+      },
       width,
       height
     )
@@ -121,7 +121,6 @@ function App() {
       imgRef.current &&
       previewCanvasRef.current
     ) {
-      // We use canvasRef instead of a hidden canvas for better integration
       const image = imgRef.current
       const canvas = previewCanvasRef.current
       const ctx = canvas.getContext('2d')
@@ -284,7 +283,7 @@ function App() {
               {/* Image Preview */}
               <div className="flex items-center justify-center bg-gray-100 dark:bg-gray-900/50 rounded-lg overflow-hidden min-h-[300px] md:min-h-[400px]">
                 {activeTool === 'crop' ? (
-                  <ReactCrop crop={crop} onChange={c => setCrop(c)} onComplete={(c) => setCompletedCrop(c)} aspect={16 / 9}>
+                  <ReactCrop crop={crop} onChange={c => setCrop(c)} onComplete={(c) => setCompletedCrop(c)}>
                     <img
                       ref={imgRef}
                       alt="Crop me" 
