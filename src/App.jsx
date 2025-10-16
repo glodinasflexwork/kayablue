@@ -2,12 +2,14 @@
 import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button.jsx'
 import { Card } from '@/components/ui/card.jsx'
-import { Upload, Download } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.jsx'
+import { Upload, Download, RotateCw, Crop, Maximize, Palette, Compress, FileImage } from 'lucide-react'
 
 import './App.css'
 
 function App() {
   const [image, setImage] = useState(null)
+  const [activeTab, setActiveTab] = useState('rotate')
   const fileInputRef = useRef(null)
 
   const handleImageUpload = (e) => {
@@ -41,7 +43,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-4xl">
+      <div className="w-full max-w-6xl">
         <div className="text-center mb-8">
           <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent mb-2">
             KAYABLUE
@@ -75,23 +77,130 @@ function App() {
               />
             </div>
           ) : (
-            <div className="flex flex-col gap-6">
-              <div className="flex items-center justify-center bg-gray-100 dark:bg-gray-900/50 rounded-lg overflow-hidden min-h-[400px]">
-                <img
-                  src={image}
-                  alt="Uploaded preview" 
-                  className="max-w-full max-h-[600px] object-contain"
-                />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Image Preview */}
+              <div className="lg:col-span-2 flex flex-col gap-4">
+                <div className="flex items-center justify-center bg-gray-100 dark:bg-gray-900/50 rounded-lg overflow-hidden min-h-[400px]">
+                  <img
+                    src={image}
+                    alt="Uploaded preview" 
+                    className="max-w-full max-h-[600px] object-contain"
+                  />
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <Button onClick={handleDownload} className="w-full">
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Image
+                  </Button>
+                  <Button onClick={handleReset} variant="secondary" className="w-full">
+                    Upload New Image
+                  </Button>
+                </div>
               </div>
 
-              <div className="flex items-center gap-4">
-                <Button onClick={handleDownload} className="w-full">
-                  <Download className="w-4 h-4 mr-2" />
-                  Download Image
-                </Button>
-                <Button onClick={handleReset} variant="secondary" className="w-full">
-                  Upload New Image
-                </Button>
+              {/* Tool Selection Tabs */}
+              <div className="lg:col-span-1">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                  <TabsList className="grid grid-cols-3 lg:grid-cols-2 gap-2">
+                    <TabsTrigger value="rotate" className="flex flex-col items-center gap-1 p-2">
+                      <RotateCw className="w-5 h-5" />
+                      <span className="text-xs">Rotate</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="crop" className="flex flex-col items-center gap-1 p-2">
+                      <Crop className="w-5 h-5" />
+                      <span className="text-xs">Crop</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="resize" className="flex flex-col items-center gap-1 p-2">
+                      <Maximize className="w-5 h-5" />
+                      <span className="text-xs">Resize</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="filters" className="flex flex-col items-center gap-1 p-2">
+                      <Palette className="w-5 h-5" />
+                      <span className="text-xs">Filters</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="compress" className="flex flex-col items-center gap-1 p-2">
+                      <Compress className="w-5 h-5" />
+                      <span className="text-xs">Compress</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="format" className="flex flex-col items-center gap-1 p-2">
+                      <FileImage className="w-5 h-5" />
+                      <span className="text-xs">Format</span>
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="rotate" className="mt-4">
+                    <div className="p-4 border rounded-lg">
+                      <h3 className="font-semibold mb-2">Rotate Image</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Rotate your image by any angle.
+                      </p>
+                      <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">
+                        Coming soon...
+                      </p>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="crop" className="mt-4">
+                    <div className="p-4 border rounded-lg">
+                      <h3 className="font-semibold mb-2">Crop Image</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Select and crop a specific area of your image.
+                      </p>
+                      <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">
+                        Coming soon...
+                      </p>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="resize" className="mt-4">
+                    <div className="p-4 border rounded-lg">
+                      <h3 className="font-semibold mb-2">Resize Image</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Change the dimensions of your image.
+                      </p>
+                      <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">
+                        Coming soon...
+                      </p>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="filters" className="mt-4">
+                    <div className="p-4 border rounded-lg">
+                      <h3 className="font-semibold mb-2">Apply Filters</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Adjust brightness, contrast, saturation, and more.
+                      </p>
+                      <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">
+                        Coming soon...
+                      </p>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="compress" className="mt-4">
+                    <div className="p-4 border rounded-lg">
+                      <h3 className="font-semibold mb-2">Compress Image</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Reduce file size while maintaining quality.
+                      </p>
+                      <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">
+                        Coming soon...
+                      </p>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="format" className="mt-4">
+                    <div className="p-4 border rounded-lg">
+                      <h3 className="font-semibold mb-2">Convert Format</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Convert between PNG, JPEG, and WebP formats.
+                      </p>
+                      <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">
+                        Coming soon...
+                      </p>
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </div>
             </div>
           )}
