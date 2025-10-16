@@ -501,21 +501,26 @@ function App() {
                   // Apply filters to the processedImage
                   if (processedImage && filterCanvasRef.current) {
                     setIsProcessing(true);
-                    const img = new Image();
-                    img.onload = () => {
-                      const canvas = filterCanvasRef.current;
-                      const ctx = canvas.getContext("2d");
+                    const imgElement = imgRef.current;
+                    if (!imgElement) {
+                      setIsProcessing(false);
+                      showToast('Error: Image not loaded for filters.');
+                      return;
+                    }
 
-                      // Ensure canvas matches image dimensions for filter application
-                      canvas.width = img.width;
-                      canvas.height = img.height;
-                      
-                      // Apply CSS filters to canvas
+                    const canvas = filterCanvasRef.current;
+                    const ctx = canvas.getContext("2d");
+
+                    // Ensure canvas matches image dimensions for filter application
+                    canvas.width = imgElement.naturalWidth;
+                    canvas.height = imgElement.naturalHeight;
+                    
+                    // Draw the current processed image onto the canvas
+                    const tempImg = new Image();
+                    tempImg.onload = () => {
                       ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) grayscale(${grayscale}%) sepia(${sepia}%) blur(${blur}px)`;
-                      ctx.drawImage(img, 0, 0, img.width, img.height);
-                      
-                      // Reset the filter context to prevent it from affecting subsequent operations
-                      ctx.filter = 'none';
+                      ctx.drawImage(tempImg, 0, 0, canvas.width, canvas.height);
+                      ctx.filter = 'none'; // Reset filter context
                       
                       setProcessedImage(canvas.toDataURL("image/png"));
                       
@@ -530,7 +535,7 @@ function App() {
                       setIsProcessing(false);
                       showToast('Filters applied successfully');
                     };
-                    img.src = processedImage;
+                    tempImg.src = processedImage;
                   }
                 }}
                 className="w-full"
