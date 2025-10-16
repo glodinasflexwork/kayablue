@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button.jsx'
 import { Card } from '@/components/ui/card.jsx'
 import { Upload, Download, RotateCw, Crop, Maximize, Palette, Archive, FileImage, RotateCcw } from 'lucide-react'
 import { Slider } from '@/components/ui/slider.jsx'
-import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop'
+import ReactCrop, { centerCrop } from 'react-image-crop'
 import 'react-image-crop/dist/ReactCrop.css'
 
 import './App.css'
@@ -102,6 +102,8 @@ function App() {
     imgRef.current = e.currentTarget
     const { width, height } = e.currentTarget
     // Set initial crop to cover most of the image without a fixed aspect ratio
+    // This will create a crop area that is 80% of the image width and height, centered.
+    // Users can then freely adjust it.
     const newCrop = centerCrop(
       {
         unit: '%',
@@ -283,7 +285,7 @@ function App() {
               {/* Image Preview */}
               <div className="flex items-center justify-center bg-gray-100 dark:bg-gray-900/50 rounded-lg overflow-hidden min-h-[300px] md:min-h-[400px]">
                 {activeTool === 'crop' ? (
-                  <ReactCrop crop={crop} onChange={c => setCrop(c)} onComplete={(c) => setCompletedCrop(c)}>
+                  <ReactCrop crop={crop} onChange={c => setCrop(c)} onComplete={(c) => setCompletedCrop(c)} aspect={undefined}>
                     <img
                       ref={imgRef}
                       alt="Crop me" 
