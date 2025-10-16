@@ -3,7 +3,7 @@ import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button.jsx'
 import { Card } from '@/components/ui/card.jsx'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.jsx'
-import { Upload, Download, RotateCw, Crop, Maximize, Palette, Compress, FileImage } from 'lucide-react'
+import { Upload, Download, RotateCw, Crop, Maximize, Palette, Archive, FileImage } from 'lucide-react'
 
 import './App.css'
 
@@ -120,7 +120,7 @@ function App() {
                       <span className="text-xs">Filters</span>
                     </TabsTrigger>
                     <TabsTrigger value="compress" className="flex flex-col items-center gap-1 p-2">
-                      <Compress className="w-5 h-5" />
+                      <Archive className="w-5 h-5" />
                       <span className="text-xs">Compress</span>
                     </TabsTrigger>
                     <TabsTrigger value="format" className="flex flex-col items-center gap-1 p-2">
