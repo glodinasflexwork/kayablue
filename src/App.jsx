@@ -862,6 +862,7 @@ function App() {
                         r *= brightness / 100;
                         g *= brightness / 100;
                         b *= brightness / 100;
+                        console.log(`Pixel ${i/4}: Brightness - R:${r}, G:${g}, B:${b}`);
                         
                         // Apply contrast
                         const factor = (259 * (contrast + 100)) / (100 * (259 - contrast));
@@ -901,14 +902,15 @@ function App() {
                       
                       // Put the modified image data back
                       ctx.putImageData(imageData, 0, 0);
+                      console.log("Image data put back to canvas.");
                       
-                      // Apply blur if needed (using CSS filter as it's complex to implement manually)
+                      // Apply blur if needed (using CSS filter as it\'s complex to implement manually)
                       if (blur > 0) {
                         console.log("Applying blur filter:", blur);
-                        const tempCanvas = document.createElement("canvas");
+                        const tempCanvas = document.createElement(\'canvas\');
                         tempCanvas.width = canvas.width;
                         tempCanvas.height = canvas.height;
-                        const tempCtx = tempCanvas.getContext("2d");
+                        const tempCtx = tempCanvas.getContext(\'2d\');
                         
                         // Draw the current (pixel-manipulated) image onto the temp canvas
                         tempCtx.drawImage(canvas, 0, 0);
@@ -918,14 +920,13 @@ function App() {
                         
                         // Draw the blurred image back onto the main canvas
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        // For blur, we need to apply the CSS filter to the context *before* drawing the blurred image back.
-                        // However, since we are drawing from a temp canvas that already has the blur applied to its context,
-                        // we just need to draw it. If the blur was applied via ctx.filter, it would be during ctx.drawImage.
-                        // Let's simplify: draw the blurred content from tempCanvas to main canvas.
                         ctx.drawImage(tempCanvas, 0, 0);
+                        console.log("Blur applied to canvas.");
                       }
                       
-                      setProcessedImage(canvas.toDataURL("image/png"));
+                      const finalProcessedImage = canvas.toDataURL("image/png");
+                      console.log("Final processed image data URL generated. Length:", finalProcessedImage.length);
+                      setProcessedImage(finalProcessedImage);
                       
                       // Reset filter values after applying
                       setBrightness(100);
