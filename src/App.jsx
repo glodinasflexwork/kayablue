@@ -36,8 +36,8 @@ function App() {
     }
   }
 
-  const rotateImage = (degrees) => {
-    if (!image) return
+  const rotateImage = (degrees, imgSource) => {
+    if (!imgSource) return
 
     const img = new Image()
     img.onload = () => {
@@ -53,16 +53,18 @@ function App() {
 
       ctx.translate(canvas.width / 2, canvas.height / 2)
       ctx.rotate(rad)
-      ctx.drawImage(img, -img.width / 2, -img.height / 2)
+      ctx.drawImage(img, -img.width / 2, -img.height / 2, img.width, img.height)
 
       setProcessedImage(canvas.toDataURL('image/png'))
     }
-    img.src = image
+    img.src = imgSource
   }
 
   useEffect(() => {
-    if (activeTool === 'rotate' && image) {
-      rotateImage(rotation)
+    if (activeTool === 'rotate' && processedImage) {
+      // When rotating, we should always rotate the *current* processedImage
+      // and update processedImage with the new rotated version.
+      rotateImage(rotation, processedImage)
     }
   }, [rotation, activeTool])
 
@@ -91,9 +93,10 @@ function App() {
 
   const handleToolChange = (toolId) => {
     setActiveTool(toolId)
-    setProcessedImage(image) // Reset to original image when changing tool
-    setRotation(0) // Reset rotation
-    setCrop(undefined) // Reset crop
+    // IMPORTANT: Do NOT reset processedImage here. It should carry over.
+    // Reset tool-specific states
+    setRotation(0)
+    setCrop(undefined)
     setCompletedCrop(null)
   }
 
@@ -116,19 +119,20 @@ function App() {
     setCrop(newCrop)
   }
 
-  useEffect(() => {
+  // Function to perform the actual crop on the current processedImage
+  const performCrop = () => {
     if (
       completedCrop?.width &&
       completedCrop?.height &&
       imgRef.current &&
       previewCanvasRef.current
     ) {
-      const image = imgRef.current
+      const imageElement = imgRef.current
       const canvas = previewCanvasRef.current
       const ctx = canvas.getContext('2d')
 
-      const scaleX = image.naturalWidth / image.width
-      const scaleY = image.naturalHeight / image.height
+      const scaleX = imageElement.naturalWidth / imageElement.width
+      const scaleY = imageElement.naturalHeight / imageElement.height
 
       const pixelRatio = window.devicePixelRatio
 
@@ -142,7 +146,7 @@ function App() {
       const cropY = completedCrop.y * scaleY
 
       ctx.drawImage(
-        image,
+        imageElement,
         cropX,
         cropY,
         completedCrop.width * scaleX,
@@ -154,7 +158,19 @@ function App() {
       )
       setProcessedImage(canvas.toDataURL('image/png'))
     }
-  }, [completedCrop])
+  }
+
+  // This useEffect should only trigger when completedCrop changes and we are in crop mode
+  // The 'Apply Crop' button will now directly call performCrop.
+  // This useEffect is no longer needed for triggering the crop, but can be used for other side effects if needed.
+  // For now, I'm commenting it out to ensure the button is the sole trigger.
+  /*
+  useEffect(() => {
+    if (activeTool === 'crop' && completedCrop) {
+      performCrop()
+    }
+  }, [completedCrop, activeTool])
+  */
 
   const tools = [
     { id: 'rotate', name: 'Rotate', icon: RotateCw, description: 'Rotate your image by any angle' },
@@ -225,7 +241,7 @@ function App() {
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Drag to select the area you want to crop. Use the handles to adjust.
             </p>
-            <Button onClick={() => setCompletedCrop(crop)} className="w-full">
+            <Button onClick={performCrop} className="w-full">
               Apply Crop
             </Button>
           </div>
@@ -289,14 +305,14 @@ function App() {
                     <img
                       ref={imgRef}
                       alt="Crop me" 
-                      src={image}
+                      src={processedImage} // Use processedImage for cropping
                       onLoad={onImageLoad}
                       className="max-w-full max-h-[400px] md:max-h-[600px] object-contain"
                     />
                   </ReactCrop>
                 ) : (
                   <img
-                    src={processedImage || image}
+                    src={processedImage}
                     alt="Uploaded preview" 
                     className="max-w-full max-h-[400px] md:max-h-[600px] object-contain"
                   />
@@ -352,7 +368,7 @@ function App() {
                     <Button 
                       onClick={() => {
                         setActiveTool(null)
-                        setProcessedImage(image)
+                        // When going back to tools, keep the processed image as is
                         setRotation(0)
                         setCrop(undefined)
                         setCompletedCrop(null)
