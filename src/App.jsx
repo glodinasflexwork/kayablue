@@ -197,14 +197,11 @@ function App() {
   }
 
   // This useEffect will now ensure that when the crop area is completed, it updates the processedImage
+  // We will no longer automatically perform the crop here. The user must click 'Apply Crop'.
   useEffect(() => {
-    if (activeTool === 'crop' && completedCrop) {
-      // Only perform crop if the imageRef is valid and the crop dimensions are valid
-      if (imgRef.current && completedCrop.width > 0 && completedCrop.height > 0) {
-        performCrop();
-      }
-    }
-  }, [completedCrop, activeTool]); // Re-added completedCrop to dependencies
+    // This useEffect is now primarily for debugging or if we need to react to completedCrop changes without applying it.
+    // The actual crop application is triggered by the 'Apply Crop' button.
+  }, [completedCrop, activeTool]);
 
   const tools = [
     { id: 'rotate', name: 'Rotate', icon: RotateCw, description: 'Rotate your image by any angle' },
