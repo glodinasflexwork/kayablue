@@ -35,10 +35,6 @@ function App() {
   const [sepia, setSepia] = useState(0)
   const [blur, setBlur] = useState(0)
 
-  // Compression & Format states
-  const [compressionQuality, setCompressionQuality] = useState(90) // 0-100
-  const [outputFormat, setOutputFormat] = useState('image/png') // image/png, image/jpeg, image/webp
-
   const handleImageUpload = (e) => {
     const file = e.target.files[0]
     if (file && file.type.startsWith('image/')) {
@@ -55,9 +51,6 @@ function App() {
         setGrayscale(0)
         setSepia(0)
         setBlur(0)
-        // Reset compression & format
-        setCompressionQuality(90)
-        setOutputFormat('image/png')
 
         const img = new Image()
         img.onload = () => {
@@ -110,8 +103,6 @@ function App() {
     setGrayscale(0)
     setSepia(0)
     setBlur(0)
-    setCompressionQuality(90)
-    setOutputFormat('image/png')
     if (imgRef.current) {
       setNewWidth(imgRef.current.naturalWidth)
       setNewHeight(imgRef.current.naturalHeight)
@@ -243,27 +234,16 @@ function App() {
       applyFiltersToContext(ctx)
       ctx.drawImage(img, -img.width / 2, -img.height / 2)
       
-      let downloadFileName = `kayablue-image-${Date.now()}`
-      let mimeType = outputFormat
-
-      if (outputFormat === 'image/jpeg') {
-        downloadFileName += '.jpeg'
-      } else if (outputFormat === 'image/webp') {
-        downloadFileName += '.webp'
-      } else {
-        downloadFileName += '.png'
-      }
-
       canvas.toBlob((blob) => {
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = downloadFileName
+        a.download = `kayablue-image-${Date.now()}.png`
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
         URL.revokeObjectURL(url)
-      }, mimeType, compressionQuality / 100)
+      }, 'image/png')
     }
     
     img.src = image
@@ -280,7 +260,7 @@ function App() {
             KAYABLUE
           </h1>
           <p className="text-gray-600 dark:text-gray-400 text-lg">
-            Upload, Rotate, Crop, Resize, Filter, Compress & Convert Your Images
+            Upload, Rotate, Crop, Resize & Filter Your Images
           </p>
         </div>
 
@@ -390,29 +370,6 @@ function App() {
                     <div>
                       <label className="text-sm">Blur</label>
                       <Slider value={[blur]} onValueChange={(v) => setBlur(v[0])} min={0} max={10} step={0.1} />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><Compress className="w-5 h-5"/>Compression & Format</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm">Quality</label>
-                      <Slider value={[compressionQuality]} onValueChange={(v) => setCompressionQuality(v[0])} min={0} max={100} />
-                    </div>
-                    <div>
-                      <label className="text-sm">Format</label>
-                      <Select value={outputFormat} onValueChange={setOutputFormat}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="image/png">PNG</SelectItem>
-                          <SelectItem value="image/jpeg">JPEG</SelectItem>
-                          <SelectItem value="image/webp">WEBP</SelectItem>
-                        </SelectContent>
-                      </Select>
                     </div>
                   </div>
                 </div>
