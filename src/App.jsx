@@ -66,12 +66,22 @@ function App() {
   }
 
   useEffect(() => {
-    if (activeTool === 'rotate' && processedImage) {
-      // When rotating, we should always rotate the *current* processedImage
-      // and update processedImage with the new rotated version.
-      rotateImage(rotation, processedImage)
+    if (activeTool === 'rotate' && processedImage && imgRef.current) {
+      // Only re-rotate if the rotation value changes, not when processedImage updates
+      // The actual rotation logic will be triggered by a button click or slider change
+      // For now, this useEffect will ensure the image is drawn with the current rotation
+      // if the tool is active and image is loaded.
+      // The continuous rotation was due to processedImage being a dependency and also being updated by rotateImage.
+      // We need to ensure rotateImage is called explicitly when rotation changes, not implicitly by processedImage.
     }
-  }, [rotation, activeTool, processedImage]) // Added processedImage to dependencies
+  }, [rotation, activeTool]) // Removed processedImage from dependencies to prevent infinite loop
+
+  // Function to apply rotation when the rotation state changes
+  const applyRotation = () => {
+    if (processedImage) {
+      rotateImage(rotation, processedImage);
+    }
+  };
 
   const handleDownload = () => {
     if (!processedImage) return
@@ -224,7 +234,10 @@ function App() {
               </label>
               <Slider
                 value={[rotation]}
-                onValueChange={(value) => setRotation(value[0])}
+                onValueChange={(value) => {
+                  setRotation(value[0]);
+                  rotateImage(value[0], processedImage); // Apply rotation immediately on slider change
+                }}
                 min={0}
                 max={360}
                 step={1}
@@ -234,7 +247,11 @@ function App() {
 
             <div className="grid grid-cols-2 gap-3">
               <Button
-                onClick={() => setRotation((prev) => (prev + 90) % 360)}
+                onClick={() => {
+                  const newRotation = (rotation + 90) % 360;
+                  setRotation(newRotation);
+                  rotateImage(newRotation, processedImage); // Apply rotation immediately on button click
+                }}
                 variant="outline"
                 className="w-full"
               >
@@ -242,7 +259,11 @@ function App() {
                 90° Right
               </Button>
               <Button
-                onClick={() => setRotation((prev) => (prev - 90 + 360) % 360)}
+                onClick={() => {
+                  const newRotation = (rotation - 90 + 360) % 360;
+                  setRotation(newRotation);
+                  rotateImage(newRotation, processedImage); // Apply rotation immediately on button click
+                }}
                 variant="outline"
                 className="w-full"
               >
@@ -250,14 +271,20 @@ function App() {
                 90° Left
               </Button>
               <Button
-                onClick={() => setRotation(180)}
+                onClick={() => {
+                  setRotation(180);
+                  rotateImage(180, processedImage); // Apply rotation immediately on button click
+                }}
                 variant="outline"
                 className="w-full"
               >
                 180°
               </Button>
               <Button
-                onClick={() => setRotation(0)}
+                onClick={() => {
+                  setRotation(0);
+                  rotateImage(0, processedImage); // Apply rotation immediately on button click
+                }}
                 variant="outline"
                 className="w-full"
               >
