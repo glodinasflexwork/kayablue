@@ -852,29 +852,40 @@ function App() {
                       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                       const data = imageData.data;
                       
-                      // Apply filters manually to each pixel
-                      for (let i = 0; i < data.length; i += 4) {
-                        let r = data[i];
-                        let g = data[i + 1];
-                        let b = data[i + 2];
+                      // Construct CSS filter string for non-blur filters
+                      let filterString = ``;
+                      if (brightness !== 100) filterString += `brightness(${brightness}%) `;
+                      if (contrast !== 100) filterString += `contrast(${contrast}%) `;
+                      if (saturation !== 100) filterString += `saturate(${saturation}%) `;
+                      if (grayscale !== 0) filterString += `grayscale(${grayscale}%) `;
+                      if (sepia !== 0) filterString += `sepia(${sepia}%) `;
+
+                      // Apply non-blur filters to the context
+                      ctx.filter = filterString.trim();
+
+                      // Draw the image with non-blur filters applied
+                      ctx.drawImage(tempImg, 0, 0, canvas.width, canvas.height);
+
+                      // Handle blur separately if needed
+                      if (blur > 0) {
+                        const tempCanvas = document.createElement("canvas");
+                        tempCanvas.width = canvas.width;
+                        tempCanvas.height = canvas.height;
+                        const tempCtx = tempCanvas.getContext("2d");
                         
-                        // Apply grayscale only for debugging
-                        if (grayscale > 0) {
-                          const grayValue = 0.299 * r + 0.587 * g + 0.114 * b;
-                          r = grayValue;
-                          g = grayValue;
-                          b = grayValue;
-                        }
+                        // Draw the current (non-blurred filtered) image onto the temp canvas
+                        tempCtx.drawImage(canvas, 0, 0);
                         
-                        // Clamp values to 0-255
-                        data[i] = Math.min(255, Math.max(0, r));
-                        data[i + 1] = Math.min(255, Math.max(0, g));
-                        data[i + 2] = Math.min(255, Math.max(0, b));
+                        // Apply blur filter to the temp canvas context
+                        tempCtx.filter = `blur(${blur}px)`;
+                        
+                        // Draw the blurred image back onto the main canvas
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.filter = \'none\'; // Reset filter on main canvas before drawing blurred image
+                        ctx.drawImage(tempCanvas, 0, 0);
                       }
-                      
-                      // Put the modified image data back
-                      ctx.putImageData(imageData, 0, 0);
-                      console.log("Image data put back to canvas.");
+
+                      console.log("Filters applied to canvas.");
                                            // Reset filter context after all operations
                       ctx.filter = \'none\';
                       
