@@ -27,10 +27,20 @@ function App() {
   const [grayscale, setGrayscale] = useState(0)
   const [sepia, setSepia] = useState(0)
   const [blur, setBlur] = useState(0)
+  const [toast, setToast] = useState({ show: false, message: '' })
+  const [isProcessing, setIsProcessing] = useState(false)
   const imgRef = useRef(null)
   const previewCanvasRef = useRef(null)
   const fileInputRef = useRef(null)
   const filterCanvasRef = useRef(null)
+
+  // Toast notification helper
+  const showToast = (message) => {
+    setToast({ show: true, message })
+    setTimeout(() => {
+      setToast({ show: false, message: '' })
+    }, 3000)
+  }
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0]
@@ -150,6 +160,7 @@ function App() {
   const performResize = () => {
     if (!processedImage || !resizeWidth || !resizeHeight) return
 
+    setIsProcessing(true);
     const img = new Image()
     img.onload = () => {
       const canvas = document.createElement('canvas')
@@ -164,6 +175,8 @@ function App() {
       setProcessedImage(canvas.toDataURL('image/png'))
       // Update original dimensions to reflect the new size
       setOriginalDimensions({ width: canvas.width, height: canvas.height })
+      setIsProcessing(false);
+      showToast('Image resized successfully');
     }
     img.src = processedImage
   }
@@ -176,36 +189,42 @@ function App() {
       imgRef.current &&
       previewCanvasRef.current
     ) {
-      const imageElement = imgRef.current
-      const canvas = previewCanvasRef.current
-      const ctx = canvas.getContext('2d')
+      setIsProcessing(true);
+      
+      setTimeout(() => {
+        const imageElement = imgRef.current
+        const canvas = previewCanvasRef.current
+        const ctx = canvas.getContext('2d')
 
-      const scaleX = imageElement.naturalWidth / imageElement.width
-      const scaleY = imageElement.naturalHeight / imageElement.height
+        const scaleX = imageElement.naturalWidth / imageElement.width
+        const scaleY = imageElement.naturalHeight / imageElement.height
 
-      const pixelRatio = window.devicePixelRatio
+        const pixelRatio = window.devicePixelRatio
 
-      canvas.width = Math.floor(completedCrop.width * scaleX * pixelRatio)
-      canvas.height = Math.floor(completedCrop.height * scaleY * pixelRatio)
+        canvas.width = Math.floor(completedCrop.width * scaleX * pixelRatio)
+        canvas.height = Math.floor(completedCrop.height * scaleY * pixelRatio)
 
-      ctx.scale(pixelRatio, pixelRatio)
-      ctx.imageSmoothingQuality = 'high'
+        ctx.scale(pixelRatio, pixelRatio)
+        ctx.imageSmoothingQuality = 'high'
 
-      const cropX = completedCrop.x * scaleX
-      const cropY = completedCrop.y * scaleY
+        const cropX = completedCrop.x * scaleX
+        const cropY = completedCrop.y * scaleY
 
-      ctx.drawImage(
-        imageElement,
-        cropX,
-        cropY,
-        completedCrop.width * scaleX,
-        completedCrop.height * scaleY,
-        0,
-        0,
-        completedCrop.width * scaleX,
-        completedCrop.height * scaleY
-      )
-      setProcessedImage(canvas.toDataURL('image/png'))
+        ctx.drawImage(
+          imageElement,
+          cropX,
+          cropY,
+          completedCrop.width * scaleX,
+          completedCrop.height * scaleY,
+          0,
+          0,
+          completedCrop.width * scaleX,
+          completedCrop.height * scaleY
+        )
+        setProcessedImage(canvas.toDataURL('image/png'))
+        setIsProcessing(false);
+        showToast('Image cropped successfully');
+      }, 100);
     }
   }
 
@@ -470,6 +489,7 @@ function App() {
                   setGrayscale(0);
                   setSepia(0);
                   setBlur(0);
+                  showToast('Filters reset to default values');
                 }}
                 variant="outline"
                 className="w-full"
@@ -480,6 +500,7 @@ function App() {
                 onClick={() => {
                   // Apply filters to the processedImage
                   if (processedImage && filterCanvasRef.current) {
+                    setIsProcessing(true);
                     const img = new Image();
                     img.onload = () => {
                       const canvas = filterCanvasRef.current;
@@ -505,6 +526,9 @@ function App() {
                       setGrayscale(0);
                       setSepia(0);
                       setBlur(0);
+                      
+                      setIsProcessing(false);
+                      showToast('Filters applied successfully');
                     };
                     img.src = processedImage;
                   }
@@ -585,6 +609,11 @@ function App() {
                     src={processedImage}
                     alt="Uploaded preview" 
                     className="max-w-full max-h-[400px] md:max-h-[600px] object-contain"
+                    style={{
+                      filter: activeTool === 'filters' 
+                        ? `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) grayscale(${grayscale}%) sepia(${sepia}%) blur(${blur}px)`
+                        : 'none'
+                    }}
                   />
                 )}
                 {activeTool === 'crop' && completedCrop && (
@@ -603,19 +632,6 @@ function App() {
                       display: 'none' // Hidden canvas for filter processing
                     }}
                   />
-                  {/* Display the processed image with filters applied via CSS for real-time preview */}
-                  {activeTool === 'filters' && processedImage && (
-                    <img
-                      src={processedImage}
-                      alt="Filtered preview"
-                      style={{
-                        filter: `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) grayscale(${grayscale}%) sepia(${sepia}%) blur(${blur}px)`,
-                        maxWidth: '100%',
-                        maxHeight: '400px',
-                        objectFit: 'contain',
-                      }}
-                    />
-                  )}
               </div>
 
               {/* Tool Selection - Only show if no tool is active */}
@@ -693,6 +709,23 @@ function App() {
           All processing happens in your browser. Your images are never uploaded to any server.
         </p>
       </div>
+
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className="fixed bottom-4 right-4 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 px-6 py-3 rounded-lg shadow-lg animate-slide-up z-50">
+          <p className="text-sm font-medium">{toast.message}</p>
+        </div>
+      )}
+
+      {/* Loading Indicator */}
+      {isProcessing && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-gray-700 dark:text-gray-300 font-medium">Processing image...</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
