@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button.jsx'
 import { Card } from '@/components/ui/card.jsx'
 import { Slider } from '@/components/ui/slider.jsx'
 import { Input } from '@/components/ui/input.jsx'
-import { Upload, Download, RotateCw, RotateCcw, RefreshCw, Crop, Maximize } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx'
+import { Upload, Download, RotateCw, RotateCcw, RefreshCw, Crop, Maximize, Palette, Image as ImageIcon, Compress } from 'lucide-react'
 
 import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop'
 import 'react-image-crop/dist/ReactCrop.css'
@@ -19,13 +20,21 @@ function App() {
 
   const [crop, setCrop] = useState()
   const [completedCrop, setCompletedCrop] = useState(null)
-  const [scale, setScale] = useState(1)
-  const [rotate, setRotate] = useState(0)
-  const [aspect, setAspect] = useState(undefined) // Changed to undefined for free aspect ratio crop
+  const [aspect, setAspect] = useState(undefined)
 
   const [originalDimensions, setOriginalDimensions] = useState({ width: 0, height: 0 })
   const [newWidth, setNewWidth] = useState(0)
   const [newHeight, setNewHeight] = useState(0)
+
+  const [brightness, setBrightness] = useState(100)
+  const [contrast, setContrast] = useState(100)
+  const [saturation, setSaturation] = useState(100)
+  const [grayscale, setGrayscale] = useState(0)
+  const [sepia, setSepia] = useState(0)
+  const [blur, setBlur] = useState(0)
+
+  const [compressionQuality, setCompressionQuality] = useState(90) // 0-100
+  const [outputFormat, setOutputFormat] = useState('image/png') // image/png, image/jpeg, image/webp
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0]
@@ -36,7 +45,15 @@ function App() {
         setRotation(0)
         setCompletedCrop(null)
         setCrop(undefined)
-        // Reset dimensions for new image
+        setBrightness(100)
+        setContrast(100)
+        setSaturation(100)
+        setGrayscale(0)
+        setSepia(0)
+        setBlur(0)
+        setCompressionQuality(90)
+        setOutputFormat('image/png')
+
         const img = new Image()
         img.onload = () => {
           setOriginalDimensions({ width: img.width, height: img.height })
@@ -56,7 +73,6 @@ function App() {
     setNewWidth(naturalWidth)
     setNewHeight(naturalHeight)
 
-    // Set initial crop if not already set
     if (!crop) {
       setCrop(centerCrop(
         makeAspectCrop(
@@ -83,10 +99,29 @@ function App() {
     setRotation(0)
     setCompletedCrop(null)
     setCrop(undefined)
+    setBrightness(100)
+    setContrast(100)
+    setSaturation(100)
+    setGrayscale(0)
+    setSepia(0)
+    setBlur(0)
+    setCompressionQuality(90)
+    setOutputFormat('image/png')
     if (imgRef.current) {
       setNewWidth(imgRef.current.naturalWidth)
       setNewHeight(imgRef.current.naturalHeight)
     }
+  }
+
+  const applyFilters = (ctx) => {
+    let filterString = ''
+    if (brightness !== 100) filterString += `brightness(${brightness}%) `
+    if (contrast !== 100) filterString += `contrast(${contrast}%) `
+    if (saturation !== 100) filterString += `saturate(${saturation}%) `
+    if (grayscale !== 0) filterString += `grayscale(${grayscale}%) `
+    if (sepia !== 0) filterString += `sepia(${sepia}%) `
+    if (blur !== 0) filterString += `blur(${blur}px) `
+    ctx.filter = filterString.trim()
   }
 
   const handleCrop = async () => {
@@ -128,7 +163,6 @@ function App() {
     setRotation(0)
     setCompletedCrop(null)
     setCrop(undefined)
-    // Update dimensions after crop
     const newImg = new Image()
     newImg.onload = () => {
       setOriginalDimensions({ width: newImg.width, height: newImg.height })
@@ -148,6 +182,7 @@ function App() {
     img.onload = () => {
       canvas.width = newWidth
       canvas.height = newHeight
+      applyFilters(ctx)
       ctx.drawImage(img, 0, 0, newWidth, newHeight)
 
       const resizedImage = canvas.toDataURL('image/png')
@@ -194,22 +229,55 @@ function App() {
       
       ctx.translate(canvas.width / 2, canvas.height / 2)
       ctx.rotate(rad)
+      applyFilters(ctx)
       ctx.drawImage(img, -img.width / 2, -img.height / 2)
       
+      const fileName = `kayablue-image-${Date.now()}`
+      let downloadFileName = fileName
+      let mimeType = outputFormat
+
+      if (outputFormat === 'image/jpeg') {
+        downloadFileName += '.jpeg'
+      } else if (outputFormat === 'image/webp') {
+        downloadFileName += '.webp'
+      } else {
+        downloadFileName += '.png'
+      }
+
       canvas.toBlob((blob) => {
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `kayablue-image-${Date.now()}.png`
+        a.download = downloadFileName
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
         URL.revokeObjectURL(url)
-      }, 'image/png')
+      }, mimeType, compressionQuality / 100)
     }
     
     img.src = image
   }
+
+  useEffect(() => {
+    if (!image || !imgRef.current || !previewCanvasRef.current) return
+
+    const canvas = previewCanvasRef.current
+    const ctx = canvas.getContext('2d')
+    const img = imgRef.current
+
+    // Temporarily set canvas to image dimensions for filter application
+    canvas.width = img.naturalWidth
+    canvas.height = img.naturalHeight
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    applyFilters(ctx)
+    ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight)
+
+    // Update the displayed image with filters applied
+    // Note: This re-renders the image with filters, but for download, filters are applied again on the final canvas
+    setImage(canvas.toDataURL('image/png'))
+  }, [brightness, contrast, saturation, grayscale, sepia, blur])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
@@ -219,7 +287,7 @@ function App() {
             KAYABLUE
           </h1>
           <p className="text-gray-600 dark:text-gray-400 text-lg">
-            Upload, Rotate, Crop & Resize Your Images
+            Upload, Rotate, Crop, Resize, Filter & Convert Your Images
           </p>
         </div>
 
@@ -271,7 +339,8 @@ function App() {
                       transition: 'transform 0.3s ease-in-out',
                       maxWidth: '100%',
                       maxHeight: '500px',
-                      objectFit: 'contain'
+                      objectFit: 'contain',
+                      filter: `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) grayscale(${grayscale}%) sepia(${sepia}%) blur(${blur}px)`
                     }}
                     className="shadow-lg"
                   />
@@ -358,6 +427,105 @@ function App() {
                   </Button>
                 </div>
 
+                <div className="space-y-4 mt-4">
+                  <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <Palette className="w-5 h-5" /> Image Filters
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Brightness: {brightness}%</label>
+                      <Slider
+                        value={[brightness]}
+                        onValueChange={(value) => setBrightness(value[0])}
+                        min={0}
+                        max={200}
+                        step={1}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Contrast: {contrast}%</label>
+                      <Slider
+                        value={[contrast]}
+                        onValueChange={(value) => setContrast(value[0])}
+                        min={0}
+                        max={200}
+                        step={1}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Saturation: {saturation}%</label>
+                      <Slider
+                        value={[saturation]}
+                        onValueChange={(value) => setSaturation(value[0])}
+                        min={0}
+                        max={200}
+                        step={1}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Grayscale: {grayscale}%</label>
+                      <Slider
+                        value={[grayscale]}
+                        onValueChange={(value) => setGrayscale(value[0])}
+                        min={0}
+                        max={100}
+                        step={1}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Sepia: {sepia}%</label>
+                      <Slider
+                        value={[sepia]}
+                        onValueChange={(value) => setSepia(value[0])}
+                        min={0}
+                        max={100}
+                        step={1}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Blur: {blur}px</label>
+                      <Slider
+                        value={[blur]}
+                        onValueChange={(value) => setBlur(value[0])}
+                        min={0}
+                        max={10}
+                        step={0.1}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4 mt-4">
+                  <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <Compress className="w-5 h-5" /> Compression & Format
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Quality: {compressionQuality}%</label>
+                      <Slider
+                        value={[compressionQuality]}
+                        onValueChange={(value) => setCompressionQuality(value[0])}
+                        min={10}
+                        max={100}
+                        step={1}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Output Format</label>
+                      <Select value={outputFormat} onValueChange={setOutputFormat}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select format" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="image/png">PNG</SelectItem>
+                          <SelectItem value="image/jpeg">JPEG</SelectItem>
+                          <SelectItem value="image/webp">WebP</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="flex gap-3 pt-4">
                   <Button
                     onClick={() => {
@@ -368,6 +536,14 @@ function App() {
                       setOriginalDimensions({ width: 0, height: 0 })
                       setNewWidth(0)
                       setNewHeight(0)
+                      setBrightness(100)
+                      setContrast(100)
+                      setSaturation(100)
+                      setGrayscale(0)
+                      setSepia(0)
+                      setBlur(0)
+                      setCompressionQuality(90)
+                      setOutputFormat('image/png')
                       if (fileInputRef.current) fileInputRef.current.value = ''
                     }}
                     variant="outline"
