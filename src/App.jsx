@@ -1897,13 +1897,17 @@ function App() {
                                   : 'border-gray-300 dark:border-gray-600 hover:border-blue-300'
                               }`}
                             >
-                              <div className="relative bg-white flex items-center justify-center" style={{ minHeight: '150px' }}>
+                              <div className="relative bg-white flex items-center justify-center overflow-hidden" style={{ minHeight: '200px', padding: '10px' }}>
                                 <img
                                   src={thumbnail.dataUrl}
                                   alt={`Page ${index + 1}`}
-                                  className="w-full h-auto transition-transform duration-300"
+                                  className="transition-transform duration-300"
                                   style={{
-                                    transform: (selectedPages.has(index) || selectedPages.size === 0) && rotation > 0 ? `rotate(${rotation}deg)` : 'rotate(0deg)'
+                                    transform: (selectedPages.has(index) || selectedPages.size === 0) && rotation > 0 
+                                      ? `rotate(${rotation}deg) scale(${rotation === 90 || rotation === 270 ? 0.7 : 1})` 
+                                      : 'rotate(0deg)',
+                                    maxWidth: rotation === 90 || rotation === 270 ? '150%' : '100%',
+                                    maxHeight: rotation === 90 || rotation === 270 ? '150%' : '100%'
                                   }}
                                 />
                                 {selectedPages.has(index) && (
