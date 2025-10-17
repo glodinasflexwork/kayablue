@@ -44,6 +44,7 @@ function App() {
   const [convertQuality, setConvertQuality] = useState(90)
   const [toast, setToast] = useState({ show: false, message: '' })
   const [isProcessing, setIsProcessing] = useState(false)
+  const [compressedPdfPreview, setCompressedPdfPreview] = useState(null) // Stores {blob, originalSize, compressedSize, reduction}
   const imgRef = useRef(null)
   const previewCanvasRef = useRef(null)
   const filterCanvasRef = useRef(null)
@@ -2247,59 +2248,112 @@ function App() {
                         </p>
                       </div>
                       
-                      <Button
-                        onClick={async () => {
-                          if (pdfFiles.length === 0) {
-                            showToast('Error: Please upload a PDF file first');
-                            return;
-                          }
-                          if (!rotation) {
-                            showToast('Error: Please select a compression level');
-                            return;
-                          }
+                      {/* Preview Compression Button */}
+                      {!compressedPdfPreview && (
+                        <Button
+                          onClick={async () => {
+                            if (pdfFiles.length === 0) {
+                              showToast('Error: Please upload a PDF file first');
+                              return;
+                            }
+                            if (!rotation) {
+                              showToast('Error: Please select a compression level');
+                              return;
+                            }
 
-                          setIsProcessing(true);
+                            setIsProcessing(true);
 
-                          try {
-                            const arrayBuffer = await pdfFiles[0].arrayBuffer();
-                            const pdfDoc = await PDFDocument.load(arrayBuffer);
-                            
-                            // Save with reduced object streams for compression
-                            const compressedPdfBytes = await pdfDoc.save({
-                              useObjectStreams: true,
-                              addDefaultPage: false,
-                              objectsPerTick: 50
-                            });
-                            
-                            const blob = new Blob([compressedPdfBytes], { type: 'application/pdf' });
-                            const url = URL.createObjectURL(blob);
-
-                            // Download the compressed PDF
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = `kayablue-compressed-${Date.now()}.pdf`;
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                            URL.revokeObjectURL(url);
-
-                            const originalSize = (pdfFiles[0].size / 1024 / 1024).toFixed(2);
-                            const compressedSize = (blob.size / 1024 / 1024).toFixed(2);
-                            const reduction = (((pdfFiles[0].size - blob.size) / pdfFiles[0].size) * 100).toFixed(1);
-                            
-                            setIsProcessing(false);
-                            showToast(`PDF compressed! ${originalSize} MB → ${compressedSize} MB (${reduction}% reduction)`);
-                          } catch (error) {
-                            console.error('Error compressing PDF:', error);
-                            setIsProcessing(false);
-                            showToast('Error: Failed to compress PDF');
-                          }
-                        }}
-                        className="w-full"
-                        disabled={isProcessing || pdfFiles.length === 0 || !rotation}
-                      >
-                        {isProcessing ? 'Compressing PDF...' : 'Compress PDF'}
+                            try {
+                              const arrayBuffer = await pdfFiles[0].arrayBuffer();
+                              const pdfDoc = await PDFDocument.load(arrayBuffer);
+                              
+                              // Save with reduced object streams for compression
+                              const compressedPdfBytes = await pdfDoc.save({
+                                useObjectStreams: true,
+                                addDefaultPage: false,
+                                objectsPerTick: 50
+                              });
+                              
+                              const blob = new Blob([compressedPdfBytes], { type: 'application/pdf' });
+                              const originalSize = (pdfFiles[0].size / 1024 / 1024).toFixed(2);
+                              const compressedSize = (blob.size / 1024 / 1024).toFixed(2);
+                              const reduction = (((pdfFiles[0].size - blob.size) / pdfFiles[0].size) * 100).toFixed(1);
+                              
+                              setCompressedPdfPreview({
+                                blob,
+                                originalSize,
+                                compressedSize,
+                                reduction
+                              });
+                              
+                              setIsProcessing(false);
+                              showToast('Compression preview ready!');
+                            } catch (error) {
+                              console.error('Error compressing PDF:', error);
+                              setIsProcessing(false);
+                              showToast('Error: Failed to compress PDF');
+                            }
+                          }}
+                          className="w-full"
+                          disabled={isProcessing || pdfFiles.length === 0 || !rotation}
+                        >
+                        {isProcessing ? 'Previewing Compression...' : 'Preview Compression'}
                       </Button>
+                      )}
+                      
+                      {/* Compression Preview Results */}
+                      {compressedPdfPreview && (
+                        <div className="space-y-4">
+                          <div className="p-4 bg-green-50 dark:bg-green-900/20 border-2 border-green-300 dark:border-green-700 rounded-lg">
+                            <h4 className="text-sm font-semibold text-green-800 dark:text-green-300 mb-3">
+                              ✓ Compression Preview
+                            </h4>
+                            <div className="grid grid-cols-2 gap-3 mb-3">
+                              <div className="bg-white dark:bg-gray-800 p-3 rounded">
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Original Size</p>
+                                <p className="text-lg font-bold text-gray-800 dark:text-gray-200">{compressedPdfPreview.originalSize} MB</p>
+                              </div>
+                              <div className="bg-white dark:bg-gray-800 p-3 rounded">
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Compressed Size</p>
+                                <p className="text-lg font-bold text-green-600 dark:text-green-400">{compressedPdfPreview.compressedSize} MB</p>
+                              </div>
+                            </div>
+                            <div className="bg-white dark:bg-gray-800 p-3 rounded text-center">
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Size Reduction</p>
+                              <p className="text-2xl font-bold text-green-600 dark:text-green-400">{compressedPdfPreview.reduction}%</p>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button
+                              onClick={() => {
+                                const url = URL.createObjectURL(compressedPdfPreview.blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `kayablue-compressed-${Date.now()}.pdf`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                URL.revokeObjectURL(url);
+                                showToast('PDF downloaded successfully!');
+                              }}
+                              className="w-full"
+                            >
+                              Download
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                setCompressedPdfPreview(null);
+                                setRotation(0);
+                              }}
+                              variant="outline"
+                              className="w-full"
+                            >
+                              Try Again
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
