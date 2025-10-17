@@ -1439,11 +1439,38 @@ function App() {
               <div className="space-y-6">
                 {/* PDF Files List */}
                 <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
-                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Uploaded PDFs ({pdfFiles.length})</h3>
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Uploaded PDFs ({pdfFiles.length}) - Drag to reorder</h3>
                   <div className="space-y-2">
                     {pdfFiles.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded-lg">
+                      <div 
+                        key={index} 
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.effectAllowed = 'move'
+                          e.dataTransfer.setData('text/plain', index)
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault()
+                          e.dataTransfer.dropEffect = 'move'
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault()
+                          const dragIndex = parseInt(e.dataTransfer.getData('text/plain'))
+                          const dropIndex = index
+                          if (dragIndex !== dropIndex) {
+                            const newFiles = [...pdfFiles]
+                            const [removed] = newFiles.splice(dragIndex, 1)
+                            newFiles.splice(dropIndex, 0, removed)
+                            setPdfFiles(newFiles)
+                          }
+                        }}
+                        className="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded-lg cursor-move hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                         <div className="flex items-center gap-3">
+                          <div className="text-gray-400 dark:text-gray-600">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M7 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 2zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 14zm6-8a2 2 0 1 0-.001-4.001A2 2 0 0 0 13 6zm0 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 14z"></path>
+                            </svg>
+                          </div>
                           <div className="bg-red-100 dark:bg-red-900/30 p-2 rounded">
                             <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
