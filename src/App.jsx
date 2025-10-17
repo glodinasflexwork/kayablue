@@ -87,7 +87,12 @@ function App() {
       if (files.length > 0) {
         setTimeout(async () => {
           try {
-            await generatePdfThumbnails(files[0])
+            // Use multi-file generation for merge (multiple files), single-file for split/rotate
+            if (files.length > 1) {
+              await generateMultiplePdfThumbnails(files)
+            } else {
+              await generatePdfThumbnails(files[0])
+            }
           } catch (error) {
             console.log('Auto thumbnail generation failed, user can load manually')
           }
