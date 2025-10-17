@@ -10,6 +10,7 @@ import 'react-image-crop/dist/ReactCrop.css'
 import { applyFiltersToCanvas } from './filterUtils'
 
 import './App.css'
+import { PDFDocument } from 'pdf-lib'
 
 function App() {
   const [mode, setMode] = useState('image') // 'image' or 'pdf'
@@ -1526,10 +1527,68 @@ function App() {
                 </div>
 
                 {/* Tool Panel */}
-                {activeTool && (
+                {activeTool === 'pdf-merge' && (
                   <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
                     <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                      {activeTool === 'pdf-merge' && '🔗 Merge PDFs'}
+                      🔗 Merge PDFs
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                      Combine {pdfFiles.length} PDF files into a single document. The files will be merged in the order shown above.
+                    </p>
+                    <Button
+                      onClick={async () => {
+                        if (pdfFiles.length < 2) {
+                          showToast('Error: Please upload at least 2 PDF files to merge');
+                          return;
+                        }
+
+                        setIsProcessing(true);
+
+                        try {
+                          // Create a new PDF document
+                          const mergedPdf = await PDFDocument.create();
+
+                          // Process each PDF file
+                          for (const file of pdfFiles) {
+                            const arrayBuffer = await file.arrayBuffer();
+                            const pdf = await PDFDocument.load(arrayBuffer);
+                            const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+                            copiedPages.forEach((page) => mergedPdf.addPage(page));
+                          }
+
+                          // Save the merged PDF
+                          const mergedPdfBytes = await mergedPdf.save();
+                          const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
+                          const url = URL.createObjectURL(blob);
+
+                          // Download the merged PDF
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `kayablue-merged-${Date.now()}.pdf`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
+
+                          setIsProcessing(false);
+                          showToast('PDFs merged successfully!');
+                        } catch (error) {
+                          console.error('Error merging PDFs:', error);
+                          setIsProcessing(false);
+                          showToast('Error: Failed to merge PDFs');
+                        }
+                      }}
+                      className="w-full"
+                      disabled={isProcessing || pdfFiles.length < 2}
+                    >
+                      {isProcessing ? 'Merging PDFs...' : `Merge ${pdfFiles.length} PDFs`}
+                    </Button>
+                  </div>
+                )}
+
+                {activeTool && activeTool !== 'pdf-merge' && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                       {activeTool === 'pdf-split' && '✂️ Split PDF'}
                       {activeTool === 'pdf-rotate' && '🔄 Rotate Pages'}
                       {activeTool === 'pdf-compress' && '🗜️ Compress PDF'}
