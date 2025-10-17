@@ -82,6 +82,17 @@ function App() {
       setSelectedPages(new Set())
       setPdfPageThumbnails([])
       showToast(`${files.length} PDF file(s) uploaded successfully`)
+      
+      // Auto-generate thumbnails with timeout fallback
+      if (files.length > 0) {
+        setTimeout(async () => {
+          try {
+            await generatePdfThumbnails(files[0])
+          } catch (error) {
+            console.log('Auto thumbnail generation failed, user can load manually')
+          }
+        }, 500) // Small delay to let UI update first
+      }
     } else {
       showToast('Error: Please upload only PDF files')
     }
@@ -1665,62 +1676,95 @@ function App() {
                       ✂️ Split PDF - Extract Pages
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                      Enter page numbers or ranges to extract (e.g., "1-3, 5, 7-9").
+                      Click on pages to select them for extraction.
                     </p>
                     
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Page Range
-                      </label>
-                      <Input
-                        type="text"
-                        placeholder="e.g., 1-3, 5, 7-9"
-                        value={(() => {
-                          if (selectedPages.size === 0) return '';
-                          const pages = Array.from(selectedPages).sort((a, b) => a - b);
-                          // Convert to 1-based for display
-                          return pages.map(p => p + 1).join(', ');
-                        })()}
-                        onChange={(e) => {
-                          const input = e.target.value.trim();
-                          if (!input) {
-                            setSelectedPages(new Set());
-                            return;
-                          }
-                          
-                          try {
-                            const pages = new Set();
-                            const parts = input.split(',').map(p => p.trim());
-                            
-                            for (const part of parts) {
-                              if (part.includes('-')) {
-                                const [start, end] = part.split('-').map(n => parseInt(n.trim()));
-                                if (isNaN(start) || isNaN(end)) continue;
-                                for (let i = start; i <= end; i++) {
-                                  pages.add(i - 1); // Convert to 0-based
+                    {/* Manual Load Button (backup if auto-load fails) */}
+                    {pdfFiles.length > 0 && pdfPageThumbnails.length === 0 && !isLoadingThumbnails && (
+                      <Button
+                        onClick={() => generatePdfThumbnails(pdfFiles[0])}
+                        variant="outline"
+                        className="w-full mb-4"
+                      >
+                        Load Page Previews
+                      </Button>
+                    )}
+                    
+                    {/* Loading State */}
+                    {isLoadingThumbnails && (
+                      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                        Loading page previews...
+                      </div>
+                    )}
+                    
+                    {/* Page Thumbnails Grid */}
+                    {pdfPageThumbnails.length > 0 && (
+                      <div>
+                        <div className="flex gap-2 mb-4">
+                          <Button
+                            onClick={() => {
+                              const allPages = new Set(Array.from({ length: pdfPageThumbnails.length }, (_, i) => i));
+                              setSelectedPages(allPages);
+                            }}
+                            variant="outline"
+                            size="sm"
+                          >
+                            Select All
+                          </Button>
+                          <Button
+                            onClick={() => setSelectedPages(new Set())}
+                            variant="outline"
+                            size="sm"
+                            disabled={selectedPages.size === 0}
+                          >
+                            Clear Selection
+                          </Button>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4 max-h-96 overflow-y-auto">
+                          {pdfPageThumbnails.map((thumbnail, index) => (
+                            <div
+                              key={index}
+                              onClick={() => {
+                                const newSelected = new Set(selectedPages);
+                                if (newSelected.has(index)) {
+                                  newSelected.delete(index);
+                                } else {
+                                  newSelected.add(index);
                                 }
-                              } else {
-                                const num = parseInt(part);
-                                if (!isNaN(num)) {
-                                  pages.add(num - 1); // Convert to 0-based
-                                }
-                              }
-                            }
-                            
-                            setSelectedPages(pages);
-                          } catch (error) {
-                            console.error('Error parsing page range:', error);
-                          }
-                        }}
-                        className="w-full"
-                        disabled={pdfFiles.length === 0}
-                      />
-                      {pdfFiles.length > 0 && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          PDF has {pdfFiles[0].name} - {selectedPages.size} page{selectedPages.size !== 1 ? 's' : ''} selected
+                                setSelectedPages(newSelected);
+                              }}
+                              className={`cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
+                                selectedPages.has(index)
+                                  ? 'border-blue-500 ring-2 ring-blue-300 dark:ring-blue-700'
+                                  : 'border-gray-300 dark:border-gray-600 hover:border-blue-300'
+                              }`}
+                            >
+                              <div className="relative bg-white">
+                                <img
+                                  src={thumbnail.dataUrl}
+                                  alt={`Page ${index + 1}`}
+                                  className="w-full h-auto"
+                                />
+                                {selectedPages.has(index) && (
+                                  <div className="absolute top-2 right-2 bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+                                    ✓
+                                  </div>
+                                )}
+                              </div>
+                              <div className="bg-blue-100 dark:bg-blue-900/40 p-2 text-center">
+                                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Page {index + 1}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                          {selectedPages.size} page{selectedPages.size !== 1 ? 's' : ''} selected
                         </p>
-                      )}
-                    </div>
+                      </div>
+                    )}
 
                     <Button
                       onClick={async () => {
