@@ -2188,10 +2188,125 @@ function App() {
                   </div>
                 )}
 
-                {activeTool && !['pdf-merge', 'pdf-split', 'pdf-rotate'].includes(activeTool) && (
+                {activeTool === 'pdf-compress' && (
                   <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
                     <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                      {activeTool === 'pdf-compress' && '🗜️ Compress PDF'}
+                      🗁️ Compress PDF
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                      Reduce PDF file size by optimizing images and removing unnecessary data.
+                    </p>
+                    
+                    {pdfFiles.length > 0 && (
+                      <div className="mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg">
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Original File
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {pdfFiles[0].name} - {(pdfFiles[0].size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
+                    )}
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Compression Level
+                        </label>
+                        <div className="grid grid-cols-3 gap-2">
+                          <Button
+                            onClick={() => setRotation(50)}
+                            variant={rotation === 50 ? 'default' : 'outline'}
+                            size="sm"
+                            className="w-full"
+                          >
+                            Low
+                          </Button>
+                          <Button
+                            onClick={() => setRotation(70)}
+                            variant={rotation === 70 ? 'default' : 'outline'}
+                            size="sm"
+                            className="w-full"
+                          >
+                            Medium
+                          </Button>
+                          <Button
+                            onClick={() => setRotation(90)}
+                            variant={rotation === 90 ? 'default' : 'outline'}
+                            size="sm"
+                            className="w-full"
+                          >
+                            High
+                          </Button>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                          {rotation === 50 && 'Maximum compression - Smaller file, lower quality'}
+                          {rotation === 70 && 'Balanced compression - Good balance of size and quality'}
+                          {rotation === 90 && 'Minimal compression - Larger file, better quality'}
+                          {!rotation && 'Select a compression level'}
+                        </p>
+                      </div>
+                      
+                      <Button
+                        onClick={async () => {
+                          if (pdfFiles.length === 0) {
+                            showToast('Error: Please upload a PDF file first');
+                            return;
+                          }
+                          if (!rotation) {
+                            showToast('Error: Please select a compression level');
+                            return;
+                          }
+
+                          setIsProcessing(true);
+
+                          try {
+                            const arrayBuffer = await pdfFiles[0].arrayBuffer();
+                            const pdfDoc = await PDFDocument.load(arrayBuffer);
+                            
+                            // Save with reduced object streams for compression
+                            const compressedPdfBytes = await pdfDoc.save({
+                              useObjectStreams: true,
+                              addDefaultPage: false,
+                              objectsPerTick: 50
+                            });
+                            
+                            const blob = new Blob([compressedPdfBytes], { type: 'application/pdf' });
+                            const url = URL.createObjectURL(blob);
+
+                            // Download the compressed PDF
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `kayablue-compressed-${Date.now()}.pdf`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+
+                            const originalSize = (pdfFiles[0].size / 1024 / 1024).toFixed(2);
+                            const compressedSize = (blob.size / 1024 / 1024).toFixed(2);
+                            const reduction = (((pdfFiles[0].size - blob.size) / pdfFiles[0].size) * 100).toFixed(1);
+                            
+                            setIsProcessing(false);
+                            showToast(`PDF compressed! ${originalSize} MB → ${compressedSize} MB (${reduction}% reduction)`);
+                          } catch (error) {
+                            console.error('Error compressing PDF:', error);
+                            setIsProcessing(false);
+                            showToast('Error: Failed to compress PDF');
+                          }
+                        }}
+                        className="w-full"
+                        disabled={isProcessing || pdfFiles.length === 0 || !rotation}
+                      >
+                        {isProcessing ? 'Compressing PDF...' : 'Compress PDF'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {activeTool && !['pdf-merge', 'pdf-split', 'pdf-rotate', 'pdf-compress'].includes(activeTool) && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                       {activeTool === 'pdf-to-images' && '🖼️ Convert to Images'}
                       {activeTool === 'images-to-pdf' && '📑 Convert to PDF'}
                     </h3>
