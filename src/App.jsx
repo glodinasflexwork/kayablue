@@ -41,8 +41,9 @@ function App() {
   const [isProcessing, setIsProcessing] = useState(false)
   const imgRef = useRef(null)
   const previewCanvasRef = useRef(null)
-  const fileInputRef = useRef(null)
   const filterCanvasRef = useRef(null)
+  const fileInputRef = useRef(null)
+  const pdfFileInputRef = useRef(null)
 
   // Toast notification helper
   const showToast = (message) => {
@@ -65,6 +66,17 @@ function App() {
         setCompletedCrop(null)
       }
       reader.readAsDataURL(file)
+    }
+  }
+
+  const handlePdfUpload = async (e) => {
+    const files = Array.from(e.target.files)
+    if (files.length > 0 && files.every(file => file.type === 'application/pdf')) {
+      setPdfFiles(files)
+      setActiveTool(null)
+      showToast(`${files.length} PDF file(s) uploaded successfully`)
+    } else {
+      showToast('Error: Please upload only PDF files')
     }
   }
 
@@ -1398,19 +1410,171 @@ function App() {
           )
           ) : (
             // PDF EDITOR MODE
-            <div className="text-center py-12 md:py-16">
-              <p className="text-2xl font-bold text-gray-700 dark:text-gray-300 mb-4">
-                📄 PDF Editor
-              </p>
-              <p className="text-gray-600 dark:text-gray-400 mb-8">
-                Merge, split, rotate, compress, and convert PDF documents
-              </p>
-              <div className="max-w-md mx-auto">
-                <p className="text-blue-600 dark:text-blue-400 font-medium">
-                  Coming soon! PDF editing features are being developed.
-                </p>
+            pdfFiles.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 md:py-16">
+                <div 
+                  onClick={() => pdfFileInputRef.current?.click()}
+                  className="w-full max-w-md border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-xl p-8 md:p-12 cursor-pointer hover:border-blue-500 dark:hover:border-blue-500 transition-all hover:bg-blue-50/50 dark:hover:bg-blue-900/20 group"
+                >
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="bg-blue-100 dark:bg-blue-900/30 p-4 rounded-full group-hover:scale-110 transition-transform">
+                      <Upload className="w-8 h-8 text-blue-500 dark:text-blue-400" />
+                    </div>
+                    <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">Click to upload PDF file(s)</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">PDF files up to 50MB each</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">You can upload multiple PDFs for merging</p>
+                  </div>
+                </div>
+                <input 
+                  type="file" 
+                  accept="application/pdf" 
+                  ref={pdfFileInputRef} 
+                  onChange={handlePdfUpload} 
+                  className="hidden" 
+                  multiple
+                />
               </div>
-            </div>
+            ) : (
+              <div className="space-y-6">
+                {/* PDF Files List */}
+                <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Uploaded PDFs ({pdfFiles.length})</h3>
+                  <div className="space-y-2">
+                    {pdfFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-red-100 dark:bg-red-900/30 p-2 rounded">
+                            <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{file.name}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                          </div>
+                        </div>
+                        <Button
+                          onClick={() => {
+                            const newFiles = pdfFiles.filter((_, i) => i !== index)
+                            setPdfFiles(newFiles)
+                            if (newFiles.length === 0) setActiveTool(null)
+                          }}
+                          variant="ghost"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* PDF Tools */}
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Select a tool:</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <Button
+                      onClick={() => setActiveTool('pdf-merge')}
+                      variant={activeTool === 'pdf-merge' ? 'default' : 'outline'}
+                      className="h-auto py-4 flex flex-col items-center gap-2"
+                      disabled={pdfFiles.length < 2}
+                    >
+                      <span className="text-2xl">🔗</span>
+                      <span className="text-sm">Merge</span>
+                    </Button>
+                    <Button
+                      onClick={() => setActiveTool('pdf-split')}
+                      variant={activeTool === 'pdf-split' ? 'default' : 'outline'}
+                      className="h-auto py-4 flex flex-col items-center gap-2"
+                    >
+                      <span className="text-2xl">✂️</span>
+                      <span className="text-sm">Split</span>
+                    </Button>
+                    <Button
+                      onClick={() => setActiveTool('pdf-rotate')}
+                      variant={activeTool === 'pdf-rotate' ? 'default' : 'outline'}
+                      className="h-auto py-4 flex flex-col items-center gap-2"
+                    >
+                      <span className="text-2xl">🔄</span>
+                      <span className="text-sm">Rotate</span>
+                    </Button>
+                    <Button
+                      onClick={() => setActiveTool('pdf-compress')}
+                      variant={activeTool === 'pdf-compress' ? 'default' : 'outline'}
+                      className="h-auto py-4 flex flex-col items-center gap-2"
+                    >
+                      <span className="text-2xl">🗜️</span>
+                      <span className="text-sm">Compress</span>
+                    </Button>
+                    <Button
+                      onClick={() => setActiveTool('pdf-to-images')}
+                      variant={activeTool === 'pdf-to-images' ? 'default' : 'outline'}
+                      className="h-auto py-4 flex flex-col items-center gap-2"
+                    >
+                      <span className="text-2xl">🖼️</span>
+                      <span className="text-sm">To Images</span>
+                    </Button>
+                    <Button
+                      onClick={() => setActiveTool('images-to-pdf')}
+                      variant={activeTool === 'images-to-pdf' ? 'default' : 'outline'}
+                      className="h-auto py-4 flex flex-col items-center gap-2"
+                    >
+                      <span className="text-2xl">📑</span>
+                      <span className="text-sm">To PDF</span>
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Tool Panel */}
+                {activeTool && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                      {activeTool === 'pdf-merge' && '🔗 Merge PDFs'}
+                      {activeTool === 'pdf-split' && '✂️ Split PDF'}
+                      {activeTool === 'pdf-rotate' && '🔄 Rotate Pages'}
+                      {activeTool === 'pdf-compress' && '🗜️ Compress PDF'}
+                      {activeTool === 'pdf-to-images' && '🖼️ Convert to Images'}
+                      {activeTool === 'images-to-pdf' && '📑 Convert to PDF'}
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      This feature is coming soon!
+                    </p>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row items-center gap-3 md:gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <Button 
+                    onClick={() => pdfFileInputRef.current?.click()}
+                    variant="secondary" 
+                    className="w-full sm:w-auto"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload More PDFs
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      setPdfFiles([])
+                      setPdfDocument(null)
+                      setActiveTool(null)
+                    }}
+                    variant="secondary" 
+                    className="w-full sm:w-auto"
+                  >
+                    Clear All
+                  </Button>
+                </div>
+                
+                <input 
+                  type="file" 
+                  accept="application/pdf" 
+                  ref={pdfFileInputRef} 
+                  onChange={handlePdfUpload} 
+                  className="hidden" 
+                  multiple
+                />
+              </div>
+            )
           )}
         </Card>
 
