@@ -135,9 +135,17 @@ function App() {
       tempImg.src = processedImage
     } else {
       // For other tools or no filters, download processedImage directly
+      // Detect the actual format from the data URL
+      let extension = 'png'
+      if (processedImage.startsWith('data:image/jpeg')) {
+        extension = 'jpg'
+      } else if (processedImage.startsWith('data:image/webp')) {
+        extension = 'webp'
+      }
+      
       const a = document.createElement('a')
       a.href = processedImage
-      a.download = `kayablue-${activeTool || 'image'}-${Date.now()}.png`
+      a.download = `kayablue-${activeTool || 'image'}-${Date.now()}.${extension}`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
