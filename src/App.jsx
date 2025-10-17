@@ -103,46 +103,39 @@ function App() {
   const handleDownload = () => {
     if (!processedImage) return
 
-    let downloadImage = processedImage
-
-    // If filter tool is active and filters are applied (live preview), capture them
-    if (activeTool === 'filters' && (brightness !== 100 || contrast !== 100 || saturation !== 100 || grayscale !== 0 || sepia !== 0 || blur !== 0)) {
-      try {
-        const img = new Image()
-        img.onload = () => {
-          const canvas = document.createElement('canvas')
-          const ctx = canvas.getContext('2d')
-          
-          canvas.width = img.width
-          canvas.height = img.height
-          
-          // Apply the same CSS filters that are shown in the live preview
-          ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) grayscale(${grayscale}%) sepia(${sepia}%) blur(${blur}px)`
-          ctx.drawImage(img, 0, 0)
-          
-          // Download the filtered image
-          const a = document.createElement('a')
-          a.href = canvas.toDataURL('image/png')
-          a.download = `kayablue-filters-${Date.now()}.png`
-          document.body.appendChild(a)
-          a.click()
-          document.body.removeChild(a)
-        }
-        img.src = processedImage
-        return // Exit early since download will happen in img.onload
-      } catch (error) {
-        console.error('Error applying filters for download:', error)
-        // Fall through to download without filters if there's an error
+    // If filter tool is active, capture the live preview (even if not applied yet)
+    if (activeTool === 'filters') {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        
+        canvas.width = img.width
+        canvas.height = img.height
+        
+        // Apply the same CSS filters that are shown in the live preview
+        const filterString = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) grayscale(${grayscale}%) sepia(${sepia}%) blur(${blur}px)`
+        ctx.filter = filterString
+        ctx.drawImage(img, 0, 0)
+        
+        // Download the filtered image
+        const a = document.createElement('a')
+        a.href = canvas.toDataURL('image/png')
+        a.download = `kayablue-filters-${Date.now()}.png`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
       }
+      img.src = processedImage
+    } else {
+      // For other tools, download processedImage directly
+      const a = document.createElement('a')
+      a.href = processedImage
+      a.download = `kayablue-${activeTool || 'image'}-${Date.now()}.png`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
     }
-
-    // Default download without filters
-    const a = document.createElement('a')
-    a.href = downloadImage
-    a.download = `kayablue-${activeTool || 'image'}-${Date.now()}.png`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
   }
 
   const handleReset = () => {
@@ -927,13 +920,8 @@ function App() {
                       console.log("Final processed image data URL generated. Length:", finalProcessedImage.length);
                       setProcessedImage(finalProcessedImage);
                       
-                      // Reset filter values after applying
-                      setBrightness(100);
-                      setContrast(100);
-                      setSaturation(100);
-                      setGrayscale(0);
-                      setSepia(0);
-                      setBlur(0);
+                      // DO NOT reset filter values - keep them visible so users know what was applied
+                      // and so the download function can capture them if needed
                       
                       setIsProcessing(false);
                       showToast('Filters applied successfully');
