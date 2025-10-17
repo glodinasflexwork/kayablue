@@ -881,13 +881,13 @@ function App() {
                         
                         // Draw the blurred image back onto the main canvas
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        ctx.filter = \'none\'; // Reset filter on main canvas before drawing blurred image
+                        ctx.filter = 'none'; // Reset filter on main canvas before drawing blurred image
                         ctx.drawImage(tempCanvas, 0, 0);
                       }
 
                       console.log("Filters applied to canvas.");
                                            // Reset filter context after all operations
-                      ctx.filter = \'none\';
+                      ctx.filter = 'none';
                       
                       const finalProcessedImage = canvas.toDataURL("image/png");
                       console.log("Final processed image data URL generated. Length:", finalProcessedImage.length);
