@@ -1738,10 +1738,167 @@ function App() {
                   </div>
                 )}
 
-                {activeTool && !['pdf-merge', 'pdf-split'].includes(activeTool) && (
+                {activeTool === 'pdf-rotate' && (
                   <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
                     <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                      {activeTool === 'pdf-rotate' && '🔄 Rotate Pages'}
+                      🔄 Rotate Pages
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                      Select pages to rotate and choose rotation angle.
+                    </p>
+                    
+                    <div className="space-y-4">
+                      {/* Page Range Input */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Page Range
+                        </label>
+                        <Input
+                          type="text"
+                          placeholder="e.g., 1-3, 5, 7-9 (leave empty for all pages)"
+                          value={(() => {
+                            if (selectedPages.size === 0) return '';
+                            const pages = Array.from(selectedPages).sort((a, b) => a - b);
+                            return pages.map(p => p + 1).join(', ');
+                          })()}
+                          onChange={(e) => {
+                            const input = e.target.value.trim();
+                            if (!input) {
+                              setSelectedPages(new Set());
+                              return;
+                            }
+                            
+                            try {
+                              const pages = new Set();
+                              const parts = input.split(',').map(p => p.trim());
+                              
+                              for (const part of parts) {
+                                if (part.includes('-')) {
+                                  const [start, end] = part.split('-').map(n => parseInt(n.trim()));
+                                  if (isNaN(start) || isNaN(end)) continue;
+                                  for (let i = start; i <= end; i++) {
+                                    pages.add(i - 1);
+                                  }
+                                } else {
+                                  const num = parseInt(part);
+                                  if (!isNaN(num)) {
+                                    pages.add(num - 1);
+                                  }
+                                }
+                              }
+                              
+                              setSelectedPages(pages);
+                            } catch (error) {
+                              console.error('Error parsing page range:', error);
+                            }
+                          }}
+                          className="w-full"
+                          disabled={pdfFiles.length === 0}
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {selectedPages.size === 0 ? 'All pages will be rotated' : `${selectedPages.size} page${selectedPages.size !== 1 ? 's' : ''} selected`}
+                        </p>
+                      </div>
+
+                      {/* Rotation Angle Selector */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Rotation Angle
+                        </label>
+                        <div className="grid grid-cols-3 gap-2">
+                          <Button
+                            onClick={() => setRotation(90)}
+                            variant={rotation === 90 ? 'default' : 'outline'}
+                            size="sm"
+                            className="w-full"
+                          >
+                            90° ↻
+                          </Button>
+                          <Button
+                            onClick={() => setRotation(180)}
+                            variant={rotation === 180 ? 'default' : 'outline'}
+                            size="sm"
+                            className="w-full"
+                          >
+                            180° ↻
+                          </Button>
+                          <Button
+                            onClick={() => setRotation(270)}
+                            variant={rotation === 270 ? 'default' : 'outline'}
+                            size="sm"
+                            className="w-full"
+                          >
+                            270° ↻
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button
+                      onClick={async () => {
+                        if (pdfFiles.length === 0) {
+                          showToast('Error: Please upload a PDF file first');
+                          return;
+                        }
+                        
+                        if (rotation === 0) {
+                          showToast('Error: Please select a rotation angle');
+                          return;
+                        }
+
+                        setIsProcessing(true);
+                        try {
+                          const arrayBuffer = await pdfFiles[0].arrayBuffer();
+                          const pdfDoc = await PDFDocument.load(arrayBuffer);
+                          const totalPages = pdfDoc.getPageCount();
+                          
+                          // Determine which pages to rotate
+                          let pagesToRotate = [];
+                          if (selectedPages.size === 0) {
+                            // Rotate all pages
+                            pagesToRotate = Array.from({ length: totalPages }, (_, i) => i);
+                          } else {
+                            // Rotate selected pages
+                            pagesToRotate = Array.from(selectedPages).filter(p => p >= 0 && p < totalPages);
+                          }
+
+                          // Rotate the pages
+                          const pages = pdfDoc.getPages();
+                          pagesToRotate.forEach(pageIndex => {
+                            const page = pages[pageIndex];
+                            const currentRotation = page.getRotation().angle;
+                            page.setRotation({ type: 'degrees', angle: (currentRotation + rotation) % 360 });
+                          });
+
+                          // Save and download
+                          const pdfBytes = await pdfDoc.save();
+                          const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `kayablue-rotated-${Date.now()}.pdf`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+
+                          setIsProcessing(false);
+                          showToast(`Successfully rotated ${pagesToRotate.length} page${pagesToRotate.length !== 1 ? 's' : ''} by ${rotation}°!`);
+                        } catch (error) {
+                          console.error('Error rotating PDF:', error);
+                          setIsProcessing(false);
+                          showToast('Error: Failed to rotate PDF pages');
+                        }
+                      }}
+                      className="w-full mt-4"
+                      disabled={isProcessing || pdfFiles.length === 0 || rotation === 0}
+                    >
+                      {isProcessing ? 'Rotating Pages...' : `Rotate ${selectedPages.size === 0 ? 'All' : selectedPages.size} Page${selectedPages.size !== 1 && selectedPages.size !== 0 ? 's' : ''} by ${rotation}°`}
+                    </Button>
+                  </div>
+                )}
+
+                {activeTool && !['pdf-merge', 'pdf-split', 'pdf-rotate'].includes(activeTool) && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                       {activeTool === 'pdf-compress' && '🗜️ Compress PDF'}
                       {activeTool === 'pdf-to-images' && '🖼️ Convert to Images'}
                       {activeTool === 'images-to-pdf' && '📑 Convert to PDF'}
