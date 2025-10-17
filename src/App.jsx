@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input.jsx'
 import { Slider } from '@/components/ui/slider.jsx'
 import ReactCrop, { centerCrop } from 'react-image-crop'
 import 'react-image-crop/dist/ReactCrop.css'
+import { applyFiltersToCanvas } from './filterUtils'
 
 import './App.css'
 
@@ -103,20 +104,21 @@ function App() {
   const handleDownload = () => {
     if (!processedImage) return
 
-    // If filter tool is active, capture the live preview (even if not applied yet)
-    if (activeTool === 'filters') {
-      const img = new Image()
-      img.onload = () => {
+    // If filter tool is active, apply filters using pixel manipulation
+    if (activeTool === 'filters' && (brightness !== 100 || contrast !== 100 || saturation !== 100 || grayscale !== 0 || sepia !== 0 || blur !== 0)) {
+      const tempImg = new Image()
+      tempImg.onload = () => {
         const canvas = document.createElement('canvas')
-        const ctx = canvas.getContext('2d')
         
-        canvas.width = img.width
-        canvas.height = img.height
-        
-        // Apply the same CSS filters that are shown in the live preview
-        const filterString = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) grayscale(${grayscale}%) sepia(${sepia}%) blur(${blur}px)`
-        ctx.filter = filterString
-        ctx.drawImage(img, 0, 0)
+        // Apply filters using pixel-based manipulation
+        applyFiltersToCanvas(canvas, tempImg, {
+          brightness,
+          contrast,
+          saturation,
+          grayscale,
+          sepia,
+          blur
+        })
         
         // Download the filtered image
         const a = document.createElement('a')
@@ -126,9 +128,9 @@ function App() {
         a.click()
         document.body.removeChild(a)
       }
-      img.src = processedImage
+      tempImg.src = processedImage
     } else {
-      // For other tools, download processedImage directly
+      // For other tools or no filters, download processedImage directly
       const a = document.createElement('a')
       a.href = processedImage
       a.download = `kayablue-${activeTool || 'image'}-${Date.now()}.png`
