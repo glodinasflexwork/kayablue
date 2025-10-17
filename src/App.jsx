@@ -12,9 +12,12 @@ import { applyFiltersToCanvas } from './filterUtils'
 import './App.css'
 
 function App() {
+  const [mode, setMode] = useState('image') // 'image' or 'pdf'
   const [image, setImage] = useState(null)
   const [processedImage, setProcessedImage] = useState(null)
   const [activeTool, setActiveTool] = useState(null)
+  const [pdfFiles, setPdfFiles] = useState([])
+  const [pdfDocument, setPdfDocument] = useState(null)
   const [rotation, setRotation] = useState(0)
   const [crop, setCrop] = useState()
   const [completedCrop, setCompletedCrop] = useState(null)
@@ -1218,13 +1221,47 @@ function App() {
           <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent mb-2">
             KAYABLUE
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 text-base md:text-lg">
-            Professional Image Editing Tools
+          <p className="text-gray-600 dark:text-gray-400 text-base md:text-lg mb-4">
+            Professional Image & Document Editing Tools
           </p>
+          
+          {/* Mode Selector */}
+          <div className="flex justify-center gap-3 mb-4">
+            <Button
+              onClick={() => {
+                setMode('image');
+                setImage(null);
+                setProcessedImage(null);
+                setActiveTool(null);
+                setPdfFiles([]);
+                setPdfDocument(null);
+              }}
+              variant={mode === 'image' ? 'default' : 'outline'}
+              className="min-w-[120px]"
+            >
+              📷 Image Editor
+            </Button>
+            <Button
+              onClick={() => {
+                setMode('pdf');
+                setImage(null);
+                setProcessedImage(null);
+                setActiveTool(null);
+                setPdfFiles([]);
+                setPdfDocument(null);
+              }}
+              variant={mode === 'pdf' ? 'default' : 'outline'}
+              className="min-w-[120px]"
+            >
+              📄 PDF Editor
+            </Button>
+          </div>
         </div>
 
         <Card className="p-4 md:p-8 shadow-2xl backdrop-blur-sm bg-white/90 dark:bg-gray-800/90">
-          {!image ? (
+          {mode === 'image' ? (
+            // IMAGE EDITOR MODE
+            !image ? (
             <div className="flex flex-col items-center justify-center py-12 md:py-16">
               <div 
                 onClick={() => fileInputRef.current?.click()}
@@ -1356,6 +1393,22 @@ function App() {
                   <Upload className="w-4 h-4 mr-2" />
                   Upload New Image
                 </Button>
+              </div>
+            </div>
+          )
+          ) : (
+            // PDF EDITOR MODE
+            <div className="text-center py-12 md:py-16">
+              <p className="text-2xl font-bold text-gray-700 dark:text-gray-300 mb-4">
+                📄 PDF Editor
+              </p>
+              <p className="text-gray-600 dark:text-gray-400 mb-8">
+                Merge, split, rotate, compress, and convert PDF documents
+              </p>
+              <div className="max-w-md mx-auto">
+                <p className="text-blue-600 dark:text-blue-400 font-medium">
+                  Coming soon! PDF editing features are being developed.
+                </p>
               </div>
             </div>
           )}
