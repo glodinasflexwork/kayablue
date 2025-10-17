@@ -1591,10 +1591,28 @@ function App() {
                           </div>
                         </div>
                         <Button
-                          onClick={() => {
+                          onClick={async () => {
                             const newFiles = pdfFiles.filter((_, i) => i !== index)
                             setPdfFiles(newFiles)
-                            if (newFiles.length === 0) setActiveTool(null)
+                            setPdfPageThumbnails([]) // Clear thumbnails
+                            setSelectedPages(new Set()) // Clear selection
+                            
+                            if (newFiles.length === 0) {
+                              setActiveTool(null)
+                            } else {
+                              // Regenerate thumbnails for remaining files
+                              setTimeout(async () => {
+                                try {
+                                  if (newFiles.length > 1) {
+                                    await generateMultiplePdfThumbnails(newFiles)
+                                  } else {
+                                    await generatePdfThumbnails(newFiles[0])
+                                  }
+                                } catch (error) {
+                                  console.log('Thumbnail regeneration failed after file removal')
+                                }
+                              }, 300)
+                            }
                           }}
                           variant="ghost"
                           className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
