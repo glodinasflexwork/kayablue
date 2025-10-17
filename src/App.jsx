@@ -32,6 +32,8 @@ function App() {
   const [compressionFormat, setCompressionFormat] = useState('jpeg')
   const [originalFileSize, setOriginalFileSize] = useState(0)
   const [compressedFileSize, setCompressedFileSize] = useState(0)
+  const [convertFormat, setConvertFormat] = useState('png')
+  const [convertQuality, setConvertQuality] = useState(90)
   const [toast, setToast] = useState({ show: false, message: '' })
   const [isProcessing, setIsProcessing] = useState(false)
   const imgRef = useRef(null)
@@ -182,6 +184,8 @@ function App() {
     setBlur(0)
     setCompressionQuality(80)
     setCompressionFormat('jpeg')
+    setConvertFormat('png')
+    setConvertQuality(90)
   }
 
   // Cropping functions
@@ -1067,6 +1071,128 @@ function App() {
               disabled={isProcessing}
             >
               {isProcessing ? 'Compressing...' : 'Apply Compression'}
+            </Button>
+          </div>
+        )
+
+      case 'format':
+        return (
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
+                Convert To Format
+              </label>
+              <div className="grid grid-cols-3 gap-3">
+                <Button
+                  onClick={() => setConvertFormat('png')}
+                  variant={convertFormat === 'png' ? 'default' : 'outline'}
+                  className="w-full"
+                >
+                  PNG
+                </Button>
+                <Button
+                  onClick={() => setConvertFormat('jpeg')}
+                  variant={convertFormat === 'jpeg' ? 'default' : 'outline'}
+                  className="w-full"
+                >
+                  JPEG
+                </Button>
+                <Button
+                  onClick={() => setConvertFormat('webp')}
+                  variant={convertFormat === 'webp' ? 'default' : 'outline'}
+                  className="w-full"
+                >
+                  WebP
+                </Button>
+              </div>
+            </div>
+
+            {(convertFormat === 'jpeg' || convertFormat === 'webp') && (
+              <div>
+                <label className="block text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
+                  Quality: {convertQuality}%
+                </label>
+                <Slider
+                  value={[convertQuality]}
+                  onValueChange={(value) => setConvertQuality(value[0])}
+                  min={1}
+                  max={100}
+                  step={1}
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  Higher quality = larger file size
+                </p>
+              </div>
+            )}
+
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+              <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                <span className="font-medium">Format Info:</span>
+              </p>
+              {convertFormat === 'png' && (
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  PNG: Lossless compression, supports transparency. Best for graphics, logos, and images requiring transparency.
+                </p>
+              )}
+              {convertFormat === 'jpeg' && (
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  JPEG: Lossy compression, no transparency. Best for photographs and images with many colors. Smaller file sizes.
+                </p>
+              )}
+              {convertFormat === 'webp' && (
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  WebP: Modern format with superior compression. Supports both lossy and lossless compression, and transparency. Best overall quality-to-size ratio.
+                </p>
+              )}
+            </div>
+
+            <Button
+              onClick={() => {
+                if (!processedImage) {
+                  showToast('Error: No image to convert');
+                  return;
+                }
+
+                setIsProcessing(true);
+
+                const img = new Image();
+                img.onload = () => {
+                  const canvas = document.createElement('canvas');
+                  const ctx = canvas.getContext('2d');
+
+                  canvas.width = img.naturalWidth;
+                  canvas.height = img.naturalHeight;
+
+                  ctx.drawImage(img, 0, 0);
+
+                  // Convert to selected format
+                  let mimeType = 'image/png';
+                  let quality = 1;
+
+                  if (convertFormat === 'jpeg') {
+                    mimeType = 'image/jpeg';
+                    quality = convertQuality / 100;
+                  } else if (convertFormat === 'webp') {
+                    mimeType = 'image/webp';
+                    quality = convertQuality / 100;
+                  }
+
+                  const convertedDataUrl = canvas.toDataURL(mimeType, quality);
+                  setProcessedImage(convertedDataUrl);
+                  setIsProcessing(false);
+                  showToast(`Image converted to ${convertFormat.toUpperCase()} successfully`);
+                };
+                img.onerror = () => {
+                  setIsProcessing(false);
+                  showToast('Error: Failed to load image');
+                };
+                img.src = processedImage;
+              }}
+              className="w-full"
+              disabled={isProcessing}
+            >
+              {isProcessing ? 'Converting...' : `Convert to ${convertFormat.toUpperCase()}`}
             </Button>
           </div>
         )
