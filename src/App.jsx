@@ -28,6 +28,10 @@ function App() {
   const [grayscale, setGrayscale] = useState(0)
   const [sepia, setSepia] = useState(0)
   const [blur, setBlur] = useState(0)
+  const [compressionQuality, setCompressionQuality] = useState(80)
+  const [compressionFormat, setCompressionFormat] = useState('jpeg')
+  const [originalFileSize, setOriginalFileSize] = useState(0)
+  const [compressedFileSize, setCompressedFileSize] = useState(0)
   const [toast, setToast] = useState({ show: false, message: '' })
   const [isProcessing, setIsProcessing] = useState(false)
   const imgRef = useRef(null)
@@ -168,6 +172,8 @@ function App() {
     setGrayscale(0)
     setSepia(0)
     setBlur(0)
+    setCompressionQuality(80)
+    setCompressionFormat('jpeg')
   }
 
   // Cropping functions
@@ -945,6 +951,115 @@ function App() {
                 Apply Filters
               </Button>
             </div>
+          </div>
+        )
+
+      case 'compress':
+        return (
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
+                Compression Quality: {compressionQuality}%
+              </label>
+              <Slider
+                value={[compressionQuality]}
+                onValueChange={(value) => setCompressionQuality(value[0])}
+                min={1}
+                max={100}
+                step={1}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                Higher quality = larger file size
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
+                Output Format
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  onClick={() => setCompressionFormat('jpeg')}
+                  variant={compressionFormat === 'jpeg' ? 'default' : 'outline'}
+                  className="w-full"
+                >
+                  JPEG
+                </Button>
+                <Button
+                  onClick={() => setCompressionFormat('png')}
+                  variant={compressionFormat === 'png' ? 'default' : 'outline'}
+                  className="w-full"
+                >
+                  PNG
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                JPEG: Best for photos | PNG: Best for graphics with transparency
+              </p>
+            </div>
+
+            {compressedFileSize > 0 && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                  <span className="font-medium">Original:</span> {(originalFileSize / 1024).toFixed(2)} KB
+                </p>
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                  <span className="font-medium">Compressed:</span> {(compressedFileSize / 1024).toFixed(2)} KB
+                </p>
+                <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mt-1">
+                  Reduction: {((1 - compressedFileSize / originalFileSize) * 100).toFixed(1)}%
+                </p>
+              </div>
+            )}
+
+            <Button
+              onClick={() => {
+                if (!processedImage) {
+                  showToast('Error: No image to compress');
+                  return;
+                }
+
+                setIsProcessing(true);
+
+                const img = new Image();
+                img.onload = () => {
+                  const canvas = document.createElement('canvas');
+                  const ctx = canvas.getContext('2d');
+
+                  canvas.width = img.naturalWidth;
+                  canvas.height = img.naturalHeight;
+
+                  ctx.drawImage(img, 0, 0);
+
+                  // Get original file size
+                  const originalSize = Math.round((processedImage.length - 'data:image/png;base64,'.length) * 3 / 4);
+                  setOriginalFileSize(originalSize);
+
+                  // Compress based on format and quality
+                  const mimeType = compressionFormat === 'jpeg' ? 'image/jpeg' : 'image/png';
+                  const quality = compressionFormat === 'jpeg' ? compressionQuality / 100 : 1;
+                  const compressedDataUrl = canvas.toDataURL(mimeType, quality);
+
+                  // Get compressed file size
+                  const compressedSize = Math.round((compressedDataUrl.length - `data:${mimeType};base64,`.length) * 3 / 4);
+                  setCompressedFileSize(compressedSize);
+
+                  setProcessedImage(compressedDataUrl);
+                  setIsProcessing(false);
+                  showToast('Image compressed successfully');
+                };
+                img.onerror = () => {
+                  setIsProcessing(false);
+                  showToast('Error: Failed to load image');
+                };
+                img.src = processedImage;
+              }}
+              className="w-full"
+              disabled={isProcessing}
+            >
+              {isProcessing ? 'Compressing...' : 'Apply Compression'}
+            </Button>
           </div>
         )
 
