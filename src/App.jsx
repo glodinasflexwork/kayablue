@@ -11,6 +11,7 @@ import { applyFiltersToCanvas } from './filterUtils'
 
 import './App.css'
 import { PDFDocument } from 'pdf-lib'
+import * as pdfjsLib from 'pdfjs-dist'
 
 function App() {
   const [mode, setMode] = useState('image') // 'image' or 'pdf'
@@ -19,6 +20,8 @@ function App() {
   const [activeTool, setActiveTool] = useState(null)
   const [pdfFiles, setPdfFiles] = useState([])
   const [pdfDocument, setPdfDocument] = useState(null)
+  const [pdfPageThumbnails, setPdfPageThumbnails] = useState([])
+  const [selectedPages, setSelectedPages] = useState(new Set())
   const [rotation, setRotation] = useState(0)
   const [crop, setCrop] = useState()
   const [completedCrop, setCompletedCrop] = useState(null)
@@ -75,9 +78,49 @@ function App() {
     if (files.length > 0 && files.every(file => file.type === 'application/pdf')) {
       setPdfFiles(files)
       setActiveTool(null)
+      setSelectedPages(new Set())
       showToast(`${files.length} PDF file(s) uploaded successfully`)
+      
+      // Generate thumbnails for the first PDF
+      if (files.length > 0) {
+        await generatePdfThumbnails(files[0])
+      }
     } else {
       showToast('Error: Please upload only PDF files')
+    }
+  }
+
+  const generatePdfThumbnails = async (file) => {
+    try {
+      // Configure PDF.js worker
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+      
+      const arrayBuffer = await file.arrayBuffer()
+      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer })
+      const pdf = await loadingTask.promise
+      
+      const thumbnails = []
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i)
+        const viewport = page.getViewport({ scale: 0.5 })
+        
+        const canvas = document.createElement('canvas')
+        const context = canvas.getContext('2d')
+        canvas.width = viewport.width
+        canvas.height = viewport.height
+        
+        await page.render({
+          canvasContext: context,
+          viewport: viewport
+        }).promise
+        
+        thumbnails.push(canvas.toDataURL())
+      }
+      
+      setPdfPageThumbnails(thumbnails)
+    } catch (error) {
+      console.error('Error generating PDF thumbnails:', error)
+      showToast('Error: Failed to generate PDF previews')
     }
   }
 
@@ -1616,54 +1659,95 @@ function App() {
                 {activeTool === 'pdf-split' && (
                   <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
                     <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                      ✂️ Split PDF
+                      ✂️ Split PDF - Select Pages to Extract
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                      Extract specific pages from the first PDF. Enter page numbers or ranges (e.g., "1-3, 5, 7-9").
+                      Click on pages to select/deselect them for extraction.
                     </p>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
-                          Page Range
-                        </label>
-                        <Input
-                          type="text"
-                          placeholder="e.g., 1-3, 5, 7-9"
-                          className="w-full"
-                          id="splitPageRange"
-                        />
-                      </div>
+                    
+                    {/* Quick Selection Buttons */}
+                    <div className="flex gap-2 mb-4">
                       <Button
-                        onClick={async () => {
+                        onClick={() => {
+                          const allPages = new Set(Array.from({ length: pdfPageThumbnails.length }, (_, i) => i));
+                          setSelectedPages(allPages);
+                        }}
+                        variant="outline"
+                        size="sm"
+                        disabled={pdfPageThumbnails.length === 0}
+                      >
+                        Select All
+                      </Button>
+                      <Button
+                        onClick={() => setSelectedPages(new Set())}
+                        variant="outline"
+                        size="sm"
+                        disabled={selectedPages.size === 0}
+                      >
+                        Clear Selection
+                      </Button>
+                    </div>
+
+                    {/* Page Thumbnails Grid */}
+                    {pdfPageThumbnails.length > 0 ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4 max-h-96 overflow-y-auto">
+                        {pdfPageThumbnails.map((thumbnail, index) => (
+                          <div
+                            key={index}
+                            onClick={() => {
+                              const newSelected = new Set(selectedPages);
+                              if (newSelected.has(index)) {
+                                newSelected.delete(index);
+                              } else {
+                                newSelected.add(index);
+                              }
+                              setSelectedPages(newSelected);
+                            }}
+                            className={`cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
+                              selectedPages.has(index)
+                                ? 'border-blue-500 ring-2 ring-blue-300 dark:ring-blue-700'
+                                : 'border-gray-300 dark:border-gray-600 hover:border-blue-300'
+                            }`}
+                          >
+                            <div className="relative">
+                              <img
+                                src={thumbnail}
+                                alt={`Page ${index + 1}`}
+                                className="w-full h-auto"
+                              />
+                              {selectedPages.has(index) && (
+                                <div className="absolute top-2 right-2 bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+                                  ✓
+                                </div>
+                              )}
+                            </div>
+                            <div className="bg-blue-100 dark:bg-blue-900/40 p-2 text-center">
+                              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{index + 1}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                        Loading page previews...
+                      </div>
+                    )}
+
+                    <Button
+                      onClick={async () => {
                           if (pdfFiles.length === 0) {
                             showToast('Error: Please upload a PDF file first');
                             return;
                           }
                           
-                          const pageRangeInput = document.getElementById('splitPageRange').value.trim();
-                          if (!pageRangeInput) {
-                            showToast('Error: Please enter page numbers or ranges');
+                          if (selectedPages.size === 0) {
+                            showToast('Error: Please select at least one page to extract');
                             return;
                           }
 
                           setIsProcessing(true);
                           try {
-                            // Parse page range (e.g., "1-3, 5, 7-9" -> [1,2,3,5,7,8,9])
-                            const parsePageRange = (range) => {
-                              const pages = [];
-                              const parts = range.split(',').map(p => p.trim());
-                              for (const part of parts) {
-                                if (part.includes('-')) {
-                                  const [start, end] = part.split('-').map(n => parseInt(n.trim()));
-                                  for (let i = start; i <= end; i++) pages.push(i - 1); // 0-indexed
-                                } else {
-                                  pages.push(parseInt(part) - 1); // 0-indexed
-                                }
-                              }
-                              return [...new Set(pages)].sort((a, b) => a - b);
-                            };
-
-                            const pagesToExtract = parsePageRange(pageRangeInput);
+                            const pagesToExtract = Array.from(selectedPages).sort((a, b) => a - b);
                             
                             // Load the first PDF
                             const arrayBuffer = await pdfFiles[0].arrayBuffer();
@@ -1702,11 +1786,10 @@ function App() {
                           }
                         }}
                         className="w-full"
-                        disabled={isProcessing || pdfFiles.length === 0}
+                        disabled={isProcessing || pdfFiles.length === 0 || selectedPages.size === 0}
                       >
-                        {isProcessing ? 'Splitting PDF...' : 'Extract Pages'}
+                        {isProcessing ? 'Extracting Pages...' : ('Extract ' + selectedPages.size + ' Selected Page' + (selectedPages.size !== 1 ? 's' : ''))}
                       </Button>
-                    </div>
                   </div>
                 )}
 
