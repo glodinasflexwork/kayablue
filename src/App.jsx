@@ -1695,13 +1695,33 @@ function App() {
                     {pdfPageThumbnails.length > 0 && (
                       <div className="mb-4">
                         <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Merge Preview ({pdfPageThumbnails.length} pages total)
+                          Merge Preview ({pdfPageThumbnails.length} pages total) - Drag to reorder
                         </p>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4 max-h-96 overflow-y-auto">
                           {pdfPageThumbnails.map((thumbnail, index) => (
                             <div
                               key={index}
-                              className="rounded-lg overflow-hidden border-2 border-gray-300 dark:border-gray-600"
+                              draggable
+                              onDragStart={(e) => {
+                                e.dataTransfer.effectAllowed = 'move'
+                                e.dataTransfer.setData('text/plain', index)
+                              }}
+                              onDragOver={(e) => {
+                                e.preventDefault()
+                                e.dataTransfer.dropEffect = 'move'
+                              }}
+                              onDrop={(e) => {
+                                e.preventDefault()
+                                const dragIndex = parseInt(e.dataTransfer.getData('text/plain'))
+                                const dropIndex = index
+                                if (dragIndex !== dropIndex) {
+                                  const newThumbnails = [...pdfPageThumbnails]
+                                  const [removed] = newThumbnails.splice(dragIndex, 1)
+                                  newThumbnails.splice(dropIndex, 0, removed)
+                                  setPdfPageThumbnails(newThumbnails)
+                                }
+                              }}
+                              className="rounded-lg overflow-hidden border-2 border-gray-300 dark:border-gray-600 cursor-move hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
                             >
                               <div className="relative bg-white">
                                 <img
@@ -1735,12 +1755,32 @@ function App() {
                           // Create a new PDF document
                           const mergedPdf = await PDFDocument.create();
 
-                          // Process each PDF file
-                          for (const file of pdfFiles) {
-                            const arrayBuffer = await file.arrayBuffer();
-                            const pdf = await PDFDocument.load(arrayBuffer);
-                            const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-                            copiedPages.forEach((page) => mergedPdf.addPage(page));
+                          // If thumbnails exist, use their order; otherwise use file order
+                          if (pdfPageThumbnails.length > 0) {
+                            // Group thumbnails by file to load each PDF only once
+                            const pdfCache = {}
+                            
+                            for (const thumbnail of pdfPageThumbnails) {
+                              const file = pdfFiles[thumbnail.fileIndex]
+                              
+                              // Load PDF if not cached
+                              if (!pdfCache[thumbnail.fileIndex]) {
+                                const arrayBuffer = await file.arrayBuffer()
+                                pdfCache[thumbnail.fileIndex] = await PDFDocument.load(arrayBuffer)
+                              }
+                              
+                              const sourcePdf = pdfCache[thumbnail.fileIndex]
+                              const [copiedPage] = await mergedPdf.copyPages(sourcePdf, [thumbnail.pageNumber - 1])
+                              mergedPdf.addPage(copiedPage)
+                            }
+                          } else {
+                            // Fallback: Process each PDF file in original order
+                            for (const file of pdfFiles) {
+                              const arrayBuffer = await file.arrayBuffer();
+                              const pdf = await PDFDocument.load(arrayBuffer);
+                              const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+                              copiedPages.forEach((page) => mergedPdf.addPage(page));
+                            }
                           }
 
                           // Save the merged PDF
