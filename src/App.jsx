@@ -138,6 +138,53 @@ function App() {
     }
   }
 
+  const generateMultiplePdfThumbnails = async (files) => {
+    setIsLoadingThumbnails(true)
+    try {
+      // Configure PDF.js worker to use local file
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
+      
+      const allThumbnails = []
+      
+      for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
+        const file = files[fileIndex]
+        const arrayBuffer = await file.arrayBuffer()
+        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer })
+        const pdf = await loadingTask.promise
+        
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i)
+          const viewport = page.getViewport({ scale: 0.5 })
+          
+          const canvas = document.createElement('canvas')
+          const context = canvas.getContext('2d')
+          canvas.width = viewport.width
+          canvas.height = viewport.height
+          
+          await page.render({
+            canvasContext: context,
+            viewport: viewport
+          }).promise
+          
+          allThumbnails.push({
+            dataUrl: canvas.toDataURL(),
+            rotation: page.rotate || 0,
+            fileName: file.name,
+            fileIndex: fileIndex,
+            pageNumber: i
+          })
+        }
+      }
+      
+      setPdfPageThumbnails(allThumbnails)
+      setIsLoadingThumbnails(false)
+    } catch (error) {
+      console.error('Error generating PDF thumbnails:', error)
+      setIsLoadingThumbnails(false)
+      showToast('Error: Failed to generate PDF previews')
+    }
+  }
+
   const rotateImage = (degrees, imgSource) => {
     if (!imgSource) return
 
@@ -1617,8 +1664,59 @@ function App() {
                       🔗 Merge PDFs
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                      Combine {pdfFiles.length} PDF files into a single document. The files will be merged in the order shown above.
+                      Preview all pages before merging {pdfFiles.length} PDF files.
                     </p>
+                    
+                    {/* Manual Load Button (backup if auto-load fails) */}
+                    {pdfFiles.length > 0 && pdfPageThumbnails.length === 0 && !isLoadingThumbnails && (
+                      <Button
+                        onClick={() => generateMultiplePdfThumbnails(pdfFiles)}
+                        variant="outline"
+                        className="w-full mb-4"
+                      >
+                        Load Page Previews
+                      </Button>
+                    )}
+                    
+                    {/* Loading State */}
+                    {isLoadingThumbnails && (
+                      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                        Loading page previews...
+                      </div>
+                    )}
+                    
+                    {/* Page Thumbnails Preview */}
+                    {pdfPageThumbnails.length > 0 && (
+                      <div className="mb-4">
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Merge Preview ({pdfPageThumbnails.length} pages total)
+                        </p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4 max-h-96 overflow-y-auto">
+                          {pdfPageThumbnails.map((thumbnail, index) => (
+                            <div
+                              key={index}
+                              className="rounded-lg overflow-hidden border-2 border-gray-300 dark:border-gray-600"
+                            >
+                              <div className="relative bg-white">
+                                <img
+                                  src={thumbnail.dataUrl}
+                                  alt={`${thumbnail.fileName} - Page ${thumbnail.pageNumber}`}
+                                  className="w-full h-auto"
+                                />
+                              </div>
+                              <div className="bg-gray-100 dark:bg-gray-800 p-2 text-center">
+                                <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
+                                  {thumbnail.fileName}
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">Page {thumbnail.pageNumber}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
                     <Button
                       onClick={async () => {
                         if (pdfFiles.length < 2) {
