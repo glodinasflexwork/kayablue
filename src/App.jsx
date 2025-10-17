@@ -90,9 +90,8 @@ function App() {
   const generatePdfThumbnails = async (file) => {
     setIsLoadingThumbnails(true)
     try {
-      // Configure PDF.js worker using a data URL approach
-      const pdfjsVersion = pdfjsLib.version
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsVersion}/pdf.worker.min.js`
+      // Configure PDF.js worker to use local file
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
       
       const arrayBuffer = await file.arrayBuffer()
       const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer })
