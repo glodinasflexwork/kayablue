@@ -1613,10 +1613,106 @@ function App() {
                   </div>
                 )}
 
-                {activeTool && activeTool !== 'pdf-merge' && (
+                {activeTool === 'pdf-split' && (
                   <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
                     <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                      {activeTool === 'pdf-split' && '✂️ Split PDF'}
+                      ✂️ Split PDF
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                      Extract specific pages from the first PDF. Enter page numbers or ranges (e.g., "1-3, 5, 7-9").
+                    </p>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
+                          Page Range
+                        </label>
+                        <Input
+                          type="text"
+                          placeholder="e.g., 1-3, 5, 7-9"
+                          className="w-full"
+                          id="splitPageRange"
+                        />
+                      </div>
+                      <Button
+                        onClick={async () => {
+                          if (pdfFiles.length === 0) {
+                            showToast('Error: Please upload a PDF file first');
+                            return;
+                          }
+                          
+                          const pageRangeInput = document.getElementById('splitPageRange').value.trim();
+                          if (!pageRangeInput) {
+                            showToast('Error: Please enter page numbers or ranges');
+                            return;
+                          }
+
+                          setIsProcessing(true);
+                          try {
+                            // Parse page range (e.g., "1-3, 5, 7-9" -> [1,2,3,5,7,8,9])
+                            const parsePageRange = (range) => {
+                              const pages = [];
+                              const parts = range.split(',').map(p => p.trim());
+                              for (const part of parts) {
+                                if (part.includes('-')) {
+                                  const [start, end] = part.split('-').map(n => parseInt(n.trim()));
+                                  for (let i = start; i <= end; i++) pages.push(i - 1); // 0-indexed
+                                } else {
+                                  pages.push(parseInt(part) - 1); // 0-indexed
+                                }
+                              }
+                              return [...new Set(pages)].sort((a, b) => a - b);
+                            };
+
+                            const pagesToExtract = parsePageRange(pageRangeInput);
+                            
+                            // Load the first PDF
+                            const arrayBuffer = await pdfFiles[0].arrayBuffer();
+                            const pdfDoc = await PDFDocument.load(arrayBuffer);
+                            
+                            // Validate page numbers
+                            const totalPages = pdfDoc.getPageCount();
+                            const invalidPages = pagesToExtract.filter(p => p < 0 || p >= totalPages);
+                            if (invalidPages.length > 0) {
+                              showToast(`Error: Invalid page numbers. PDF has ${totalPages} pages.`);
+                              setIsProcessing(false);
+                              return;
+                            }
+
+                            // Create new PDF with selected pages
+                            const newPdf = await PDFDocument.create();
+                            const copiedPages = await newPdf.copyPages(pdfDoc, pagesToExtract);
+                            copiedPages.forEach(page => newPdf.addPage(page));
+
+                            // Save and download
+                            const pdfBytes = await newPdf.save();
+                            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `kayablue-split-${Date.now()}.pdf`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+
+                            setIsProcessing(false);
+                            showToast(`Successfully extracted ${pagesToExtract.length} pages!`);
+                          } catch (error) {
+                            console.error('Error splitting PDF:', error);
+                            setIsProcessing(false);
+                            showToast('Error: Failed to split PDF. Check page range format.');
+                          }
+                        }}
+                        className="w-full"
+                        disabled={isProcessing || pdfFiles.length === 0}
+                      >
+                        {isProcessing ? 'Splitting PDF...' : 'Extract Pages'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {activeTool && !['pdf-merge', 'pdf-split'].includes(activeTool) && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                       {activeTool === 'pdf-rotate' && '🔄 Rotate Pages'}
                       {activeTool === 'pdf-compress' && '🗜️ Compress PDF'}
                       {activeTool === 'pdf-to-images' && '🖼️ Convert to Images'}
