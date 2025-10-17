@@ -11,7 +11,6 @@ import { applyFiltersToCanvas } from './filterUtils'
 
 import './App.css'
 import { PDFDocument } from 'pdf-lib'
-import * as pdfjsLib from 'pdfjs-dist'
 
 function App() {
   const [mode, setMode] = useState('image') // 'image' or 'pdf'
@@ -20,7 +19,6 @@ function App() {
   const [activeTool, setActiveTool] = useState(null)
   const [pdfFiles, setPdfFiles] = useState([])
   const [pdfDocument, setPdfDocument] = useState(null)
-  const [pdfPageThumbnails, setPdfPageThumbnails] = useState([])
   const [selectedPages, setSelectedPages] = useState(new Set())
   const [rotation, setRotation] = useState(0)
   const [crop, setCrop] = useState()
@@ -80,47 +78,8 @@ function App() {
       setActiveTool(null)
       setSelectedPages(new Set())
       showToast(`${files.length} PDF file(s) uploaded successfully`)
-      
-      // Generate thumbnails for the first PDF
-      if (files.length > 0) {
-        await generatePdfThumbnails(files[0])
-      }
     } else {
       showToast('Error: Please upload only PDF files')
-    }
-  }
-
-  const generatePdfThumbnails = async (file) => {
-    try {
-      // Configure PDF.js worker
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
-      
-      const arrayBuffer = await file.arrayBuffer()
-      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer })
-      const pdf = await loadingTask.promise
-      
-      const thumbnails = []
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i)
-        const viewport = page.getViewport({ scale: 0.5 })
-        
-        const canvas = document.createElement('canvas')
-        const context = canvas.getContext('2d')
-        canvas.width = viewport.width
-        canvas.height = viewport.height
-        
-        await page.render({
-          canvasContext: context,
-          viewport: viewport
-        }).promise
-        
-        thumbnails.push(canvas.toDataURL())
-      }
-      
-      setPdfPageThumbnails(thumbnails)
-    } catch (error) {
-      console.error('Error generating PDF thumbnails:', error)
-      showToast('Error: Failed to generate PDF previews')
     }
   }
 
@@ -1659,79 +1618,65 @@ function App() {
                 {activeTool === 'pdf-split' && (
                   <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
                     <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                      ✂️ Split PDF - Select Pages to Extract
+                      ✂️ Split PDF - Extract Pages
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                      Click on pages to select/deselect them for extraction.
+                      Enter page numbers or ranges to extract (e.g., "1-3, 5, 7-9").
                     </p>
                     
-                    {/* Quick Selection Buttons */}
-                    <div className="flex gap-2 mb-4">
-                      <Button
-                        onClick={() => {
-                          const allPages = new Set(Array.from({ length: pdfPageThumbnails.length }, (_, i) => i));
-                          setSelectedPages(allPages);
-                        }}
-                        variant="outline"
-                        size="sm"
-                        disabled={pdfPageThumbnails.length === 0}
-                      >
-                        Select All
-                      </Button>
-                      <Button
-                        onClick={() => setSelectedPages(new Set())}
-                        variant="outline"
-                        size="sm"
-                        disabled={selectedPages.size === 0}
-                      >
-                        Clear Selection
-                      </Button>
-                    </div>
-
-                    {/* Page Thumbnails Grid */}
-                    {pdfPageThumbnails.length > 0 ? (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4 max-h-96 overflow-y-auto">
-                        {pdfPageThumbnails.map((thumbnail, index) => (
-                          <div
-                            key={index}
-                            onClick={() => {
-                              const newSelected = new Set(selectedPages);
-                              if (newSelected.has(index)) {
-                                newSelected.delete(index);
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Page Range
+                      </label>
+                      <Input
+                        type="text"
+                        placeholder="e.g., 1-3, 5, 7-9"
+                        value={(() => {
+                          if (selectedPages.size === 0) return '';
+                          const pages = Array.from(selectedPages).sort((a, b) => a - b);
+                          // Convert to 1-based for display
+                          return pages.map(p => p + 1).join(', ');
+                        })()}
+                        onChange={(e) => {
+                          const input = e.target.value.trim();
+                          if (!input) {
+                            setSelectedPages(new Set());
+                            return;
+                          }
+                          
+                          try {
+                            const pages = new Set();
+                            const parts = input.split(',').map(p => p.trim());
+                            
+                            for (const part of parts) {
+                              if (part.includes('-')) {
+                                const [start, end] = part.split('-').map(n => parseInt(n.trim()));
+                                if (isNaN(start) || isNaN(end)) continue;
+                                for (let i = start; i <= end; i++) {
+                                  pages.add(i - 1); // Convert to 0-based
+                                }
                               } else {
-                                newSelected.add(index);
+                                const num = parseInt(part);
+                                if (!isNaN(num)) {
+                                  pages.add(num - 1); // Convert to 0-based
+                                }
                               }
-                              setSelectedPages(newSelected);
-                            }}
-                            className={`cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
-                              selectedPages.has(index)
-                                ? 'border-blue-500 ring-2 ring-blue-300 dark:ring-blue-700'
-                                : 'border-gray-300 dark:border-gray-600 hover:border-blue-300'
-                            }`}
-                          >
-                            <div className="relative">
-                              <img
-                                src={thumbnail}
-                                alt={`Page ${index + 1}`}
-                                className="w-full h-auto"
-                              />
-                              {selectedPages.has(index) && (
-                                <div className="absolute top-2 right-2 bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
-                                  ✓
-                                </div>
-                              )}
-                            </div>
-                            <div className="bg-blue-100 dark:bg-blue-900/40 p-2 text-center">
-                              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{index + 1}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                        Loading page previews...
-                      </div>
-                    )}
+                            }
+                            
+                            setSelectedPages(pages);
+                          } catch (error) {
+                            console.error('Error parsing page range:', error);
+                          }
+                        }}
+                        className="w-full"
+                        disabled={pdfFiles.length === 0}
+                      />
+                      {pdfFiles.length > 0 && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          PDF has {pdfFiles[0].name} - {selectedPages.size} page{selectedPages.size !== 1 ? 's' : ''} selected
+                        </p>
+                      )}
+                    </div>
 
                     <Button
                       onClick={async () => {
